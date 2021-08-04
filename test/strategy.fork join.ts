@@ -232,18 +232,18 @@ describe('BalancerStrategy - Join', function () {
     expect(initialShares).to.be.equal(finalShares)
   })
 
-  it('handle USDC airdrops + Join', async () => {
+  it('handle DAI airdrops + Join', async () => {
     //Make it so there are some previous shares
     await vault.connect(whale).join(whale.address, strategy.address, fp(50), '0x')
 
     const aidrop = fp(100000)
     const joinAmount = fp(50)
 
-    //airdrop 1000
-    usdc.connect(whale).transfer(strategy.address, aidrop.div(bn('1e12')))
-
     const daiBalance = await dai.balanceOf(strategy.address)
     expect(daiBalance).to.be.equal(0)
+
+    //airdrop 1000
+    dai.connect(whale).transfer(strategy.address, aidrop)
 
     const initialShares = await strategy.getTotalShares()
 
