@@ -75,10 +75,10 @@ contract BalancerStrategy is IStrategy {
         uint256 totalSupply = IERC20(poolAddress).totalSupply();
 
         //TODO: hardcoded weight because of we will use oracle
-        uint256 daiPerBPT = balances[0].div(400000000000000000).div(totalSupply);
+        uint256 tokenPerBPT = balances[0].div(400000000000000000).div(totalSupply);
         uint256 bPTAmount = IERC20(poolAddress).balanceOf(address(this));
 
-        return bPTAmount.mul(daiPerBPT);
+        return bPTAmount.mul(tokenPerBPT);
     }
 
     function getTotalShares() external view override returns (uint256) {
@@ -141,14 +141,14 @@ contract BalancerStrategy is IStrategy {
         _token.approve(address(vault), FixedPoint.MAX_UINT256);
     }
 
-    function investAllDAI() public {
+    function investAll() public {
         uint256 tokenBalance = token.balanceOf(address(this));
         if(tokenBalance > 0) {
-            _investDAI(tokenBalance);
+            _invest(tokenBalance);
         }
     }
 
-    function tradeForDAI(IERC20 _tokenIn) public {
+    function tradeForToken(IERC20 _tokenIn) public {
         require(address(_tokenIn) != address(poolAddress), "BALANCER_INTERNAL_TOKEN");
         require(address(_tokenIn) != address(token), "BALANCER_INTERNAL_TOKEN");
 
@@ -173,8 +173,8 @@ contract BalancerStrategy is IStrategy {
     }
 
     function tradeAndInvest(IERC20 _token) public {
-        tradeForDAI(_token);
-        investAllDAI();
+        tradeForToken(_token);
+        investAll();
     }
 
     function claimAndInvest() public {
@@ -185,7 +185,7 @@ contract BalancerStrategy is IStrategy {
 
     //Internal
 
-    function _investDAI(uint256 amount) internal {
+    function _invest(uint256 amount) internal {
         (IERC20[] memory tokens,,) = balancerVault.getPoolTokens(poolId);
 
         uint256[] memory amountsIn = new uint256[](tokens.length);

@@ -202,7 +202,7 @@ describe('BalancerStrategy - Join', function () {
     expect(initialShares).to.be.equal(initialBptBalance)
 
     //invest aidrop
-    await strategy.investAllDAI()
+    await strategy.investAll()
 
     //total shares < bpt
     const finalBptBalance = await bpt.balanceOf(strategy.address)
