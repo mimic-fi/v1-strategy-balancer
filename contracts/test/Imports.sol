@@ -15,5 +15,6 @@
 pragma solidity ^0.8.0;
 
 import "@mimic-fi/v1-core/contracts/vault/Vault.sol";
+import "@mimic-fi/v1-core/contracts/vault/UniswapConnector.sol";
 
 contract Imports {}

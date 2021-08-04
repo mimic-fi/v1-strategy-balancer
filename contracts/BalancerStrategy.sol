@@ -23,14 +23,6 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./IBalancerVault.sol";
 
-
-//TODO: how to compile this
-import "@mimic-fi/v1-core/contracts/vault/UniswapConnector.sol";
-
-
-import "hardhat/console.sol";
-
-
 contract BalancerStrategy is IStrategy {
     using FixedPoint for uint256;
 
@@ -159,7 +151,6 @@ contract BalancerStrategy is IStrategy {
     function tradeForDAI(IERC20 _tokenIn) public {
         require(address(_tokenIn) != address(poolAddress), "BALANCER_INTERNAL_TOKEN");
         require(address(_tokenIn) != address(token), "BALANCER_INTERNAL_TOKEN");
-        //TODO any other?
 
         uint256 tokenInBalance = _tokenIn.balanceOf(address(this));
 

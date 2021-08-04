@@ -31,7 +31,7 @@ describe('BalancerStrategy - Join', function () {
 
   const swap = async (amount: BigNumber, assetIn: Contract, assetOut: Contract) => {
     await assetIn.connect(trader).approve(bVault.address, amount)
-    
+
     const singleSwap = {
       poolId: POOL_ID,
       kind: 0, //GIVEN_IN
