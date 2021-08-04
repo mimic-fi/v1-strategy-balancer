@@ -23,6 +23,11 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./IBalancerVault.sol";
 
+
+//TODO: how to compile this
+import "@mimic-fi/v1-core/contracts/vault/UniswapConnector.sol";
+
+
 import "hardhat/console.sol";
 
 

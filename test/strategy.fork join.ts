@@ -1,11 +1,22 @@
 import { expect } from 'chai'
 import { BigNumber, Contract } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { deploy, fp, bn, getSigner, impersonateWhale, instanceAt } from '@mimic-fi/v1-helpers'
+import { deploy, fp, bn, getSigner, impersonate, impersonateWhale, instanceAt } from '@mimic-fi/v1-helpers'
 
 describe('BalancerStrategy - Join', function () {
-  let whale: SignerWithAddress, trader: SignerWithAddress, vault: Contract, strategy: Contract, dai: Contract, bal: Contract, bVault: Contract, bpt: Contract, weth: Contract, usdc: Contract
+  let whale: SignerWithAddress,
+    whale2: SignerWithAddress,
+    trader: SignerWithAddress,
+    vault: Contract,
+    strategy: Contract,
+    dai: Contract,
+    bal: Contract,
+    bVault: Contract,
+    bpt: Contract,
+    weth: Contract,
+    usdc: Contract
 
+  const WHALE_WITH_BAL = '0x967159C42568A54D11a4761fC86a6089eD42B7ba'
   const BALANCER_VAULT = '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
   const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
   const POOL_ID = '0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a'
@@ -20,6 +31,7 @@ describe('BalancerStrategy - Join', function () {
 
   const swap = async (amount: BigNumber, assetIn: Contract, assetOut: Contract) => {
     await assetIn.connect(trader).approve(bVault.address, amount)
+    
     const singleSwap = {
       poolId: POOL_ID,
       kind: 0, //GIVEN_IN
@@ -43,6 +55,7 @@ describe('BalancerStrategy - Join', function () {
   before('load signers', async () => {
     trader = await getSigner(1)
     whale = await impersonateWhale(fp(100))
+    whale2 = await impersonate(WHALE_WITH_BAL, fp(100))
   })
 
   before('deploy vault', async () => {
@@ -248,25 +261,23 @@ describe('BalancerStrategy - Join', function () {
     expect(whaleSharesExpected.sub(whaleSharesObtained).abs().lt(fp(0.0001))).to.be.true
   })
 
-  //TODO: need whale with BAL
+  it('handle BAL airdrops', async () => {
+    //cannot test claim, so we airdrop 1000
+    bal.connect(whale2).transfer(strategy.address, fp(1000))
 
-  // it('handle BAL airdrops', async () => {
-  //   //airdrop 1000
-  //   bal.connect(whale).transfer(strategy.address, fp(10))
+    const daiBalance = await dai.balanceOf(strategy.address)
+    expect(daiBalance).to.be.equal(0)
 
-  //   const daiBalance = await dai.balanceOf(strategy.address)
-  //   expect(daiBalance).to.be.equal(0)
+    const initialBptBalance = await bpt.balanceOf(strategy.address)
+    const initialShares = await strategy.getTotalShares()
 
-  //   const initialBptBalance = await bpt.balanceOf(strategy.address)
-  //   const initialShares = await strategy.getTotalShares()
+    //invest aidrop
+    await strategy.claimAndInvest()
 
-  //   //invest aidrop
-  //   await strategy.claimAndInvest()
+    const finalBptBalance = await bpt.balanceOf(strategy.address)
+    const finalShares = await strategy.getTotalShares()
 
-  //   const finalBptBalance = await bpt.balanceOf(strategy.address)
-  //   const finalShares = await strategy.getTotalShares()
-
-  //   expect(initialBptBalance.lt(finalBptBalance)).to.be.true
-  //   expect(initialShares).to.be.equal(finalShares)
-  // })
+    expect(initialBptBalance.lt(finalBptBalance)).to.be.true
+    expect(initialShares).to.be.equal(finalShares)
+  })
 })
