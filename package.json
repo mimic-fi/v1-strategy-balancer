@@ -1,0 +1,45 @@
+{
+  "name": "@mimic-fi/v1-strategy-balancer",
+  "version": "0.0.1",
+  "license": "GPL-3.0",
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "scripts": {
+    "build": "yarn compile",
+    "compile": "hardhat compile",
+    "lint": "yarn lint:solidity && yarn lint:typescript",
+    "lint:solidity": "solhint 'contracts/**/*.sol'",
+    "lint:typescript": "eslint . --ext .ts",
+    "test": "hardhat test ./test/*.ts",
+    "test:deployed": "yarn test --network mainnet",
+    "test:fork": "yarn test --fork mainnet --block-number 12731159"
+  },
+  "dependencies": {
+    "@mimic-fi/v1-core": "^0.0.3",
+    "@openzeppelin/contracts": "^4.1.0"
+  },
+  "devDependencies": {
+    "@mimic-fi/v1-helpers": "^0.0.2",
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@types/chai": "^4.2.18",
+    "@types/mocha": "^8.2.2",
+    "@typescript-eslint/eslint-plugin": "^4.1.1",
+    "@typescript-eslint/parser": "^4.1.1",
+    "chai": "^4.2.0",
+    "eslint": "^7.9.0",
+    "eslint-plugin-mocha-no-only": "^1.1.1",
+    "eslint-plugin-prettier": "^3.1.4",
+    "ethereum-waffle": "^3.3.0",
+    "ethers": "^5.0.8",
+    "hardhat": "^2.4.1",
+    "hardhat-local-networks-config-plugin": "0.0.5",
+    "mocha": "^6.2.3",
+    "prettier": "^2.2.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.10",
+    "solhint": "^3.2.1",
+    "ts-node": "^8.5.4",
+    "typescript": "^4.3.4"
+  }
+}
