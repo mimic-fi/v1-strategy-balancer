@@ -7,8 +7,16 @@ import 'hardhat-local-networks-config-plugin'
 import { homedir } from 'os'
 
 export default {
-  solidity: '0.8.0',
   localNetworksConfig: path.join(homedir(), '/.hardhat/networks.mimic.json'),
+  solidity: {
+    version: '0.8.0',
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 10000,
+      },
+    },
+  },
   mocha: {
     timeout: 40000,
   },

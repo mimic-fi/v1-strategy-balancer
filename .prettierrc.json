@@ -8,7 +8,7 @@
         "newline-before-return": true,
         "no-duplicate-variable": [true, "check-parameters"],
         "no-var-keyword": true,
-        "printWidth": 200,
+        "printWidth": 120,
         "semi": false,
         "singleQuote": true,
         "tabWidth": 2,

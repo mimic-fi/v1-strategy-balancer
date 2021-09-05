@@ -30,6 +30,11 @@
     chalk "^2.0.0"
     js-tokens "^4.0.0"
 
+"@chainlink/contracts@^0.2.1":
+  version "0.2.1"
+  resolved "https://registry.yarnpkg.com/@chainlink/contracts/-/contracts-0.2.1.tgz#0815901baa4634b7b41b4e747f3425e2c968fb85"
+  integrity sha512-mAQgPQKiqW3tLMlp31NgcnXpwG3lttgKU0izAqKiirJ9LH7rQ+O0oHIVR5Qp2yuqgmfbLsgfdLo4GcVC8IFz3Q==
+
 "@ensdomains/ens@^0.4.4":
   version "0.4.5"
   resolved "https://registry.yarnpkg.com/@ensdomains/ens/-/ens-0.4.5.tgz#e0aebc005afdc066447c6e22feb4eda89a5edbfc"
@@ -552,19 +557,20 @@
   resolved "https://registry.yarnpkg.com/@humanwhocodes/object-schema/-/object-schema-1.2.0.tgz#87de7af9c231826fdd68ac7258f77c429e0e5fcf"
   integrity sha512-wdppn25U8z/2yiaT6YGquE6X8sSv7hNMWSXYSSU1jGv/yd6XqjXgTDJ8KP4NgjTXfJ3GbRjeeb8RTV7a/VpM+w==
 
-"@mimic-fi/v1-core@^0.0.4":
-  version "0.0.4"
-  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-core/-/v1-core-0.0.4.tgz#95fd33a2ad0917df7c8fce30e353fcb09db5123a"
-  integrity sha512-HATRItYDI+kV4UECttuK8tkRnDNmYIvDvAEj+U2/SNc4/fUgTiNtbpf1zoY1gJ6I5AjlFFMl2Znph/Oz7yH+Mw==
+"@mimic-fi/v1-core@^0.0.7":
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-core/-/v1-core-0.0.7.tgz#c09d23150ac3936e40b426274120ffab18d3a92c"
+  integrity sha512-q65uh1A3hZhgrbeLiGNXRNTTq3XfJ1ECKtIEl9KZ9FfSmVXubr8t34ljv171Kc3htQA0BBHQSgZpABiclamoHw==
   dependencies:
+    "@chainlink/contracts" "^0.2.1"
     "@openzeppelin/contracts" "^4.1.0"
     "@uniswap/v2-core" "^1.0.1"
     "@uniswap/v2-periphery" "^1.1.0-beta.0"
 
-"@mimic-fi/v1-helpers@^0.0.2":
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-helpers/-/v1-helpers-0.0.2.tgz#d20a7d09bbc97d40d9106d786d2f55070dfc2e1f"
-  integrity sha512-DxtdW0cnbikz+7uFD1lKSzMSzEKonXe5ADtpl9GxbctXO76gs1jLh8wcfcO6l+/tJxWYTZyowzX5GaA0HK0Deg==
+"@mimic-fi/v1-helpers@^0.0.4":
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-helpers/-/v1-helpers-0.0.4.tgz#44287c0994edc12a4895433861f16be0742ca4c8"
+  integrity sha512-rDwfp8ePPCdcPZPD8nSm8fyl2ynI3hBYAbvL9u+JVuVL7oDnqOy4ORtyazWHVVkljDLssDon5yJpcZzIFihvww==
   dependencies:
     "@nomiclabs/hardhat-ethers" "^2.0.2"
     decimal.js "^10.3.1"

@@ -3,8 +3,9 @@ import { BigNumber, Contract } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 import { deploy, fp, bn, getSigner, impersonate, impersonateWhale, instanceAt } from '@mimic-fi/v1-helpers'
 
-describe('BalancerStrategy - Join', function () {
-  let whale: SignerWithAddress,
+describe('BalancerWeightedStrategy - Join', function () {
+  let owner: SignerWithAddress,
+    whale: SignerWithAddress,
     whale2: SignerWithAddress,
     trader: SignerWithAddress,
     vault: Contract,
@@ -17,15 +18,22 @@ describe('BalancerStrategy - Join', function () {
     usdc: Contract
 
   const WHALE_WITH_BAL = '0x967159C42568A54D11a4761fC86a6089eD42B7ba'
+
   const BALANCER_VAULT = '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
-  const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
-  const POOL_ID = '0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a'
-  const POOL_ADDRESS = '0x0b09deA16768f0799065C475bE02919503cB2a35'
+  const POOL_DAI_WETH_ID = '0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a'
+  const POOL_DAI_WETH_ADDRESS = '0x0b09deA16768f0799065C475bE02919503cB2a35'
   const TOKEN_INDEX = 0
+
+  const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
   const BAL = '0xba100000625a3754423978a60c9317c58a424e3D'
   const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
   const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+
   const UNISWAP_V2_ROUTER_ADDRESS = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
+
+  const CHAINLINK_ORACLE_DAI_ETH = '0x773616E4d11A78F511299002da57A0a94577F1f4'
+  const CHAINLINK_ORACLE_USDC_ETH = '0x986b5E1e1755e3C2440e960477f25201B0a8bbD4'
+  const PRICE_ONE_ORACLE = '0x1111111111111111111111111111111111111111'
 
   const MAX_UINT_256 = bn(2).pow(256).sub(1)
 
@@ -33,7 +41,7 @@ describe('BalancerStrategy - Join', function () {
     await assetIn.connect(trader).approve(bVault.address, amount)
 
     const singleSwap = {
-      poolId: POOL_ID,
+      poolId: POOL_DAI_WETH_ID,
       kind: 0, //GIVEN_IN
       assetIn: assetIn.address,
       assetOut: assetOut.address,
@@ -53,6 +61,8 @@ describe('BalancerStrategy - Join', function () {
   }
 
   before('load signers', async () => {
+    owner = await getSigner()
+    owner = await impersonate(owner.address, fp(100))
     trader = await getSigner(1)
     whale = await impersonateWhale(fp(100))
     whale2 = await impersonate(WHALE_WITH_BAL, fp(100))
@@ -60,17 +70,28 @@ describe('BalancerStrategy - Join', function () {
 
   before('deploy vault', async () => {
     const protocolFee = fp(0.00003)
+    const whitelistedTokens: string[] = []
     const whitelistedStrategies: string[] = []
 
+    const priceOracleTokens: string[] = [DAI, WETH, USDC]
+    const priceOracleFeeds: string[] = [CHAINLINK_ORACLE_DAI_ETH, PRICE_ONE_ORACLE, CHAINLINK_ORACLE_USDC_ETH]
+
+    const priceOracle = await deploy('ChainLinkPriceOracle', [priceOracleTokens, priceOracleFeeds])
     const swapConnector = await deploy('UniswapConnector', [UNISWAP_V2_ROUTER_ADDRESS])
 
-    vault = await deploy('Vault', [protocolFee, swapConnector.address, whitelistedStrategies])
+    vault = await deploy('@mimic-fi/v1-core/artifacts/contracts/vault/Vault.sol/Vault', [
+      protocolFee,
+      priceOracle.address,
+      swapConnector.address,
+      whitelistedTokens,
+      whitelistedStrategies,
+    ])
   })
 
   before('load tokens', async () => {
     bVault = await instanceAt('IBalancerVault', BALANCER_VAULT)
     dai = await instanceAt('IERC20', DAI)
-    bpt = await instanceAt('IERC20', POOL_ADDRESS)
+    bpt = await instanceAt('IERC20', POOL_DAI_WETH_ADDRESS)
     bal = await instanceAt('IERC20', BAL)
     weth = await instanceAt('IERC20', WETH)
     usdc = await instanceAt('IERC20', USDC)
@@ -78,13 +99,21 @@ describe('BalancerStrategy - Join', function () {
 
   before('deposit to Vault', async () => {
     await dai.connect(whale).approve(vault.address, fp(100))
-    await vault.connect(whale).deposit(whale.address, [dai.address], [fp(100)])
+    await vault.connect(whale).deposit(whale.address, dai.address, fp(100))
 
     await dai.connect(whale).transfer(trader.address, fp(1000000))
   })
 
   before('deploy strategy', async () => {
-    strategy = await deploy('BalancerStrategy', [vault.address, dai.address, bVault.address, POOL_ID, TOKEN_INDEX, bal.address, 'metadata:uri'])
+    strategy = await deploy('BalancerWeightedStrategy', [
+      vault.address,
+      dai.address,
+      bVault.address,
+      POOL_DAI_WETH_ID,
+      TOKEN_INDEX,
+      bal.address,
+      'metadata:uri',
+    ])
   })
 
   it('vault has max DAI allowance', async () => {
@@ -142,7 +171,7 @@ describe('BalancerStrategy - Join', function () {
 
   it('more gains to recover lost in single token join slipage', async () => {
     let amount: BigNumber
-    for (let index = 0; index < 30; index++) {
+    for (let index = 0; index < 100; index++) {
       amount = await dai.balanceOf(trader.address)
       await swap(amount, dai, weth)
       amount = await weth.balanceOf(trader.address)
@@ -202,7 +231,7 @@ describe('BalancerStrategy - Join', function () {
     expect(initialShares).to.be.equal(initialBptBalance)
 
     //invest aidrop
-    await strategy.investAll()
+    await strategy.invest(dai.address)
 
     //total shares < bpt
     const finalBptBalance = await bpt.balanceOf(strategy.address)
@@ -223,7 +252,7 @@ describe('BalancerStrategy - Join', function () {
     const initialShares = await strategy.getTotalShares()
 
     //invest aidrop
-    await strategy.tradeAndInvest(usdc.address)
+    await strategy.invest(usdc.address)
 
     const finalBptBalance = await bpt.balanceOf(strategy.address)
     const finalShares = await strategy.getTotalShares()
@@ -233,51 +262,58 @@ describe('BalancerStrategy - Join', function () {
   })
 
   it('handle DAI airdrops + Join', async () => {
-    //Make it so there are some previous shares
-    await vault.connect(whale).join(whale.address, strategy.address, fp(50), '0x')
-
-    const aidrop = fp(100000)
     const joinAmount = fp(50)
 
+    //Make it so there are some previous shares
+    await vault.connect(whale).join(whale.address, strategy.address, joinAmount, '0x')
+
+    const initialShares = await strategy.getTotalShares()
+
+    //All dai invested
     const daiBalance = await dai.balanceOf(strategy.address)
     expect(daiBalance).to.be.equal(0)
 
     //airdrop 1000
-    dai.connect(whale).transfer(strategy.address, aidrop)
+    const aidrop = fp(100000)
+    await dai.connect(whale).transfer(strategy.address, aidrop)
 
-    const initialShares = await strategy.getTotalShares()
-
-    //whale joins
-    await vault.connect(whale).join(whale.address, strategy.address, joinAmount, '0x')
+    //whale2 joins
+    const depositAmount = joinAmount.mul(2)
+    await dai.connect(whale).transfer(whale2.address, depositAmount)
+    await dai.connect(whale2).approve(vault.address, depositAmount)
+    await vault.connect(whale2).deposit(whale2.address, dai.address, depositAmount)
+    await vault.connect(whale2).join(whale2.address, strategy.address, joinAmount, '0x')
 
     //Final token balance includes 100k airdrop + joinAmount
-    const finalTokenBalance = await strategy.getTokenBalance()
     const finalShares = await strategy.getTotalShares()
 
-    const whaleSharesExpected = joinAmount.mul(initialShares).div(finalTokenBalance)
-    const whaleSharesObtained = finalShares.sub(initialShares)
-
-    //shares obtained by the whale should be close to how much dai it addd and not the airdropped one
-    expect(whaleSharesExpected.sub(whaleSharesObtained).abs().lt(fp(0.0001))).to.be.true
+    //shares obtained by the whale should be close to how much dai it adds and not the airdropped one
+    expect(
+      finalShares
+        .sub(initialShares)
+        .mul(fp(1))
+        .div(initialShares)
+        .lte(joinAmount.mul(fp(1)).div(joinAmount.add(aidrop)))
+    ).to.be.true
   })
 
-  it('handle BAL airdrops', async () => {
-    //cannot test claim, so we airdrop 1000
-    bal.connect(whale2).transfer(strategy.address, fp(1000))
+  // it('handle BAL airdrops', async () => {
+  //   //cannot test claim, so we airdrop 1000
+  //   bal.connect(whale2).transfer(strategy.address, fp(1000))
 
-    const daiBalance = await dai.balanceOf(strategy.address)
-    expect(daiBalance).to.be.equal(0)
+  //   const daiBalance = await dai.balanceOf(strategy.address)
+  //   expect(daiBalance).to.be.equal(0)
 
-    const initialBptBalance = await bpt.balanceOf(strategy.address)
-    const initialShares = await strategy.getTotalShares()
+  //   const initialBptBalance = await bpt.balanceOf(strategy.address)
+  //   const initialShares = await strategy.getTotalShares()
 
-    //invest aidrop
-    await strategy.claimAndInvest()
+  //   //invest aidrop
+  //   await strategy.claimAndInvest()
 
-    const finalBptBalance = await bpt.balanceOf(strategy.address)
-    const finalShares = await strategy.getTotalShares()
+  //   const finalBptBalance = await bpt.balanceOf(strategy.address)
+  //   const finalShares = await strategy.getTotalShares()
 
-    expect(initialBptBalance.lt(finalBptBalance)).to.be.true
-    expect(initialShares).to.be.equal(finalShares)
-  })
+  //   expect(initialBptBalance.lt(finalBptBalance)).to.be.true
+  //   expect(initialShares).to.be.equal(finalShares)
+  // })
 })
