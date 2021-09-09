@@ -28,6 +28,7 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
         bytes32 poolId,
         uint256 tokenIndex,
         IERC20 balToken,
+        uint256 slippage,
         string memory metadata
     )
         BalancerStrategy(
@@ -37,6 +38,7 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
             poolId,
             tokenIndex,
             balToken,
+            slippage,
             metadata
         )
     {}

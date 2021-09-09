@@ -79,7 +79,7 @@ describe('BalancerWeightedStrategy - Join', function () {
     const priceOracle = await deploy('ChainLinkPriceOracle', [priceOracleTokens, priceOracleFeeds])
     const swapConnector = await deploy('UniswapConnector', [UNISWAP_V2_ROUTER_ADDRESS])
 
-    vault = await deploy('@mimic-fi/v1-core/artifacts/contracts/vault/Vault.sol/Vault', [
+    vault = await deploy('@mimic-fi/v1-vault/artifacts/contracts/Vault.sol/Vault', [
       protocolFee,
       priceOracle.address,
       swapConnector.address,
@@ -105,6 +105,7 @@ describe('BalancerWeightedStrategy - Join', function () {
   })
 
   before('deploy strategy', async () => {
+    const slippage = fp(0.01)
     strategy = await deploy('BalancerWeightedStrategy', [
       vault.address,
       dai.address,
@@ -112,6 +113,7 @@ describe('BalancerWeightedStrategy - Join', function () {
       POOL_DAI_WETH_ID,
       TOKEN_INDEX,
       bal.address,
+      slippage,
       'metadata:uri',
     ])
   })
@@ -183,7 +185,7 @@ describe('BalancerWeightedStrategy - Join', function () {
     const initialAmount = fp(50)
     const initialBalance = await vault.getAccountBalance(whale.address, dai.address)
 
-    await vault.connect(whale).exit(whale.address, strategy.address, fp(1), '0x')
+    await vault.connect(whale).exit(whale.address, strategy.address, fp(1), false, '0x')
 
     const currentBalance = await vault.getAccountBalance(whale.address, dai.address)
     const finalAmount = currentBalance.sub(initialBalance)
@@ -205,19 +207,14 @@ describe('BalancerWeightedStrategy - Join', function () {
     expect(totalShares).to.be.equal(0)
   })
 
-  it('can give allowance to other tokens', async () => {
-    await strategy.approveVault(weth.address)
+  it('can give token allowance to vault and ctoken', async () => {
+    await strategy.approveTokenSpenders()
 
-    const allowance = await weth.allowance(strategy.address, vault.address)
-    expect(allowance).to.be.equal(MAX_UINT_256)
-  })
+    const vaultAllowance = await dai.allowance(strategy.address, vault.address)
+    expect(vaultAllowance).to.be.equal(MAX_UINT_256)
 
-  it('cannot give BPT allowance to vault ', async () => {
-    await expect(strategy.approveVault(bpt.address)).to.be.revertedWith('BALANCER_INTERNAL_TOKEN')
-  })
-
-  it('cannot give BAL allowance to vault ', async () => {
-    await expect(strategy.approveVault(bal.address)).to.be.revertedWith('BALANCER_INTERNAL_TOKEN')
+    const balancerVaultAllowance = await dai.allowance(strategy.address, BALANCER_VAULT)
+    expect(balancerVaultAllowance).to.be.equal(MAX_UINT_256)
   })
 
   it('handle DAI airdrops', async () => {

@@ -24,7 +24,7 @@ describe('BalancerWeightedStrategy - Deploy', function () {
     const whitelistedTokens: string[] = []
     const whitelistedStrategies: string[] = []
 
-    vault = await deploy('@mimic-fi/v1-core/artifacts/contracts/vault/Vault.sol/Vault', [
+    vault = await deploy('@mimic-fi/v1-vault/artifacts/contracts/Vault.sol/Vault', [
       protocolFee,
       priceOracle,
       swapConnector,
@@ -39,6 +39,7 @@ describe('BalancerWeightedStrategy - Deploy', function () {
   })
 
   it('deploy strategy', async () => {
+    const slippage = fp(0.01)
     strategy = await deploy('BalancerWeightedStrategy', [
       vault.address,
       dai.address,
@@ -46,6 +47,7 @@ describe('BalancerWeightedStrategy - Deploy', function () {
       POOL_ID,
       TOKEN_INDEX,
       bal.address,
+      slippage,
       'metadata:uri',
     ])
 

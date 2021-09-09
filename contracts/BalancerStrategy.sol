@@ -14,11 +14,11 @@
 
 pragma solidity ^0.8.0;
 
-import "@mimic-fi/v1-core/contracts/interfaces/IStrategy.sol";
-import "@mimic-fi/v1-core/contracts/interfaces/ISwapConnector.sol";
-import "@mimic-fi/v1-core/contracts/interfaces/IPriceOracle.sol";
-import "@mimic-fi/v1-core/contracts/interfaces/IVault.sol";
-import "@mimic-fi/v1-core/contracts/libraries/FixedPoint.sol";
+import "@mimic-fi/v1-vault/contracts/interfaces/IStrategy.sol";
+import "@mimic-fi/v1-vault/contracts/interfaces/ISwapConnector.sol";
+import "@mimic-fi/v1-vault/contracts/interfaces/IPriceOracle.sol";
+import "@mimic-fi/v1-vault/contracts/interfaces/IVault.sol";
+import "@mimic-fi/v1-vault/contracts/libraries/FixedPoint.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -30,7 +30,10 @@ abstract contract BalancerStrategy is IStrategy {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    uint256 private constant _SLIPPAGE = 1e16; // 1%
+    uint256 private constant _MAX_SLIPPAGE = 2e17; // 20%
+
+    uint256 private constant _MAX_UINT256 =
+        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
     uint256 private constant JOIN_WEIGHTED_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT = 1;
     uint256 private constant EXIT_WEIGHTED_POOL_EXACT_BPT_IN_FOR_ONE_TOKEN_OUT =
@@ -44,9 +47,10 @@ abstract contract BalancerStrategy is IStrategy {
     address internal immutable _poolAddress;
     uint256 internal immutable _tokenIndex;
     IERC20 internal immutable _balToken;
+    uint256 private immutable _slippage;
+    string private _metadataURI;
 
     uint256 internal _totalShares;
-    string internal _metadataURI;
 
     modifier onlyVault() {
         require(address(_vault) == msg.sender, "CALLER_IS_NOT_VAULT");
@@ -60,22 +64,24 @@ abstract contract BalancerStrategy is IStrategy {
         bytes32 poolId,
         uint256 tokenIndex,
         IERC20 balToken,
+        uint256 slippage,
         string memory metadata
     ) {
+        require(slippage <= _MAX_SLIPPAGE, "SWAP_MAX_SLIPPAGE");
+
         _vault = vault;
         _token = token;
-
         _balancerVault = balancerVault;
         _poolId = poolId;
         _tokenIndex = tokenIndex;
         _balToken = balToken;
-
+        _slippage = slippage;
         _metadataURI = metadata;
 
         (_poolAddress, ) = balancerVault.getPool(poolId);
 
-        token.approve(address(vault), FixedPoint.MAX_UINT256);
-        token.approve(address(balancerVault), FixedPoint.MAX_UINT256);
+        token.approve(address(vault), _MAX_UINT256);
+        token.approve(address(balancerVault), _MAX_UINT256);
     }
 
     function getVault() external view returns (address) {
@@ -109,12 +115,14 @@ abstract contract BalancerStrategy is IStrategy {
         onlyVault
         returns (uint256)
     {
+        //Claim comp into token
+        claim();
+
         uint256 initialTokenBalance = _token.balanceOf(address(this));
         uint256 initialBPTBalance = IERC20(_poolAddress).balanceOf(
             address(this)
         );
 
-        claim();
         invest(_token);
 
         uint256 finalBPTBalance = IERC20(_poolAddress).balanceOf(address(this));
@@ -134,12 +142,11 @@ abstract contract BalancerStrategy is IStrategy {
         return shares;
     }
 
-    function onExit(uint256 shares, bytes memory)
-        external
-        override
-        onlyVault
-        returns (address, uint256)
-    {
+    function onExit(
+        uint256 shares,
+        bool,
+        bytes memory
+    ) external override onlyVault returns (address, uint256) {
         claim();
         invest(_token);
 
@@ -160,18 +167,9 @@ abstract contract BalancerStrategy is IStrategy {
         return (address(_token), amount);
     }
 
-    function approveVault(IERC20 token) external {
-        //BPT and BAL protected
-        require(
-            address(token) != address(_poolAddress),
-            "BALANCER_INTERNAL_TOKEN"
-        );
-        require(
-            address(token) != address(_balToken),
-            "BALANCER_INTERNAL_TOKEN"
-        );
-
-        token.approve(address(_vault), FixedPoint.MAX_UINT256);
+    function approveTokenSpenders() external {
+        _approveToken(address(_vault));
+        _approveToken(address(_balancerVault));
     }
 
     function invest(IERC20 token) public {
@@ -183,7 +181,9 @@ abstract contract BalancerStrategy is IStrategy {
         uint256 tokenBalance = token.balanceOf(address(this));
 
         if (token != _token) {
-            _swap(token, _token, tokenBalance);
+            if (tokenBalance > 0) {
+                _swap(token, _token, tokenBalance);
+            }
             tokenBalance = _token.balanceOf(address(this));
         }
 
@@ -191,8 +191,11 @@ abstract contract BalancerStrategy is IStrategy {
     }
 
     function claim() public {
-        //TODO: claim and invest BAL
-        //swap BAL for token
+        uint256 tokenBalance = _balToken.balanceOf(address(this));
+
+        if (tokenBalance > 0) {
+            _swap(_balToken, _token, tokenBalance);
+        }
     }
 
     //Internal
@@ -297,14 +300,14 @@ abstract contract BalancerStrategy is IStrategy {
         require(amountOut >= minAmountOut, "SWAP_MIN_AMOUNT");
 
         uint256 postBalanceIn = tokenIn.balanceOf(address(this));
-        // require(
-        //     postBalanceIn.sub(preBalanceIn) >= remainingIn,
-        //     "SWAP_INVALID_REMAINING_IN"
-        // );
+        require(
+            postBalanceIn >= preBalanceIn.add(remainingIn),
+            "SWAP_INVALID_REMAINING_IN"
+        );
 
         uint256 postBalanceOut = tokenOut.balanceOf(address(this));
         require(
-            postBalanceOut.sub(preBalanceOut) >= amountOut,
+            postBalanceOut >= preBalanceOut.add(amountOut),
             "SWAP_INVALID_AMOUNT_OUT"
         );
 
@@ -332,8 +335,19 @@ abstract contract BalancerStrategy is IStrategy {
 
         minAmountOut = FixedPoint.mulUp(
             FixedPoint.mulUp(amountIn, price),
-            FixedPoint.ONE - _SLIPPAGE
+            FixedPoint.ONE - _slippage
         );
+    }
+
+    function _approveToken(address spender) private {
+        uint256 allowance = _token.allowance(address(this), spender);
+        if (allowance < _MAX_UINT256) {
+            if (allowance > 0) {
+                // Some tokens revert when changing non-zero approvals
+                _token.approve(spender, 0);
+            }
+            _token.approve(spender, _MAX_UINT256);
+        }
     }
 
     function _safeTransfer(
