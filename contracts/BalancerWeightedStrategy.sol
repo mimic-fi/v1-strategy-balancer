@@ -14,12 +14,16 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
 import "./BalancerStrategy.sol";
 import "./LogExpMath.sol";
 import "./IWeightedPool.sol";
 
 contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
     using FixedPoint for uint256;
+
+    uint256 private immutable _tokenScale;
 
     constructor(
         IVault vault,
@@ -41,17 +45,21 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
             slippage,
             metadata
         )
-    {}
+    {
+        //Token must support decimals()
+        uint256 decimals = IERC20Metadata(address(token)).decimals();
+        uint256 diff = 18 - decimals;
+        _tokenScale = 10**diff;
+    }
 
     function _getTokenPerBPTPrice() internal view override returns (uint256) {
-        (IERC20[] memory tokens, uint256[] memory balances, ) = _balancerVault
-        .getPoolTokens(_poolId);
+        (IERC20[] memory tokens, , ) = _balancerVault.getPoolTokens(_poolId);
 
         IWeightedPool weightedPool = IWeightedPool(_poolAddress);
 
         uint256[] memory weigths = weightedPool.getNormalizedWeights();
 
-        uint256 invariant = _calculateInvariant(weigths, balances);
+        uint256 invariant = weightedPool.getInvariant();
         uint256 totalSupply = IERC20(_poolAddress).totalSupply();
 
         address priceOracle = _vault.priceOracle();
@@ -63,27 +71,20 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
             if (tokens[i] == _token) {
                 price = FixedPoint.ONE;
             } else {
-                price = IPriceOracle(priceOracle).getTokenPrice(
-                    address(_token),
-                    address(tokens[i])
-                );
+                price =
+                    IPriceOracle(priceOracle).getTokenPrice(
+                        address(_token),
+                        address(tokens[i])
+                    ) *
+                    _tokenScale;
             }
 
             sumPrices = sumPrices.add(pow(price, weigths[i]));
             divider = divider.mul(pow(weigths[i], weigths[i]));
         }
 
-        return invariant.mul(sumPrices).divUp(totalSupply).divUp(divider);
-    }
-
-    //TODO: or use upscaled getIInvariant?
-    function _calculateInvariant(
-        uint256[] memory normalizedWeights,
-        uint256[] memory balances
-    ) private pure returns (uint256 invariant) {
-        invariant = FixedPoint.ONE;
-        for (uint256 i = 0; i < normalizedWeights.length; i++) {
-            invariant = invariant.mul(pow(balances[i], normalizedWeights[i]));
-        }
+        return
+            invariant.mul(sumPrices).divUp(totalSupply).divUp(divider) /
+            _tokenScale;
     }
 }
