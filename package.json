@@ -12,7 +12,7 @@
     "lint:solidity": "solhint 'contracts/**/*.sol'",
     "lint:typescript": "eslint . --ext .ts",
     "test": "hardhat test ./test/*.ts",
-    "test:fork": "yarn test --fork mainnet --block-number 12731159"
+    "test:fork": "yarn test --fork mainnet --block-number 13131159"
   },
   "dependencies": {
     "@mimic-fi/v1-vault": "^0.0.2",
@@ -34,7 +34,7 @@
     "eslint-plugin-prettier": "^3.1.4",
     "ethereum-waffle": "^3.3.0",
     "ethers": "^5.0.8",
-    "hardhat": "^2.4.1",
+    "hardhat": "^2.5.0",
     "hardhat-local-networks-config-plugin": "0.0.5",
     "mocha": "^6.2.3",
     "prettier": "^2.2.1",

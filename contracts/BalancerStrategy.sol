@@ -148,6 +148,7 @@ abstract contract BalancerStrategy is IStrategy {
         bytes memory
     ) external override onlyVault returns (address, uint256) {
         claim();
+
         invest(_token);
 
         uint256 initialTokenBalance = _token.balanceOf(address(this));
@@ -187,7 +188,9 @@ abstract contract BalancerStrategy is IStrategy {
             tokenBalance = _token.balanceOf(address(this));
         }
 
-        _join(tokenBalance);
+        if (tokenBalance > 0) {
+            _join(tokenBalance);
+        }
     }
 
     function claim() public {
