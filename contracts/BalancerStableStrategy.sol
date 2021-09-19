@@ -14,11 +14,11 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 
-import "./BalancerStrategy.sol";
-import "./LogExpMath.sol";
-import "./IStablePool.sol";
+import './BalancerStrategy.sol';
+import './LogExpMath.sol';
+import './IStablePool.sol';
 
 contract BalancerStableStrategy is BalancerStrategy, LogExpMath {
     using FixedPoint for uint256;
@@ -34,18 +34,7 @@ contract BalancerStableStrategy is BalancerStrategy, LogExpMath {
         IERC20 balToken,
         uint256 slippage,
         string memory metadata
-    )
-        BalancerStrategy(
-            vault,
-            token,
-            balancerVault,
-            poolId,
-            tokenIndex,
-            balToken,
-            slippage,
-            metadata
-        )
-    {
+    ) BalancerStrategy(vault, token, balancerVault, poolId, tokenIndex, balToken, slippage, metadata) {
         //Token must support decimals()
         uint256 decimals = IERC20Metadata(address(token)).decimals();
         uint256 diff = 18 - decimals;

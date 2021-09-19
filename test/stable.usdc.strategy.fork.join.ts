@@ -1,7 +1,7 @@
+import { bn, deploy, fp, getSigner, impersonate, impersonateWhale, instanceAt } from '@mimic-fi/v1-helpers'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 import { expect } from 'chai'
 import { BigNumber, Contract } from 'ethers'
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { deploy, fp, bn, getSigner, impersonate, impersonateWhale, instanceAt } from '@mimic-fi/v1-helpers'
 
 describe('BalancerStableStrategy - USDC - Join', function () {
   let owner: SignerWithAddress,
@@ -23,18 +23,24 @@ describe('BalancerStableStrategy - USDC - Join', function () {
   const POOL_DAI_USDC_USDT_ADDRESS = '0x06df3b2bbb68adc8b0e302443692037ed9f91b42'
   const TOKEN_INDEX = 1
 
+  // eslint-disable-next-line no-secrets/no-secrets
   const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
   const BAL = '0xba100000625a3754423978a60c9317c58a424e3D'
+  // eslint-disable-next-line no-secrets/no-secrets
   const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
   const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+  // eslint-disable-next-line no-secrets/no-secrets
   const USDT = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
 
   const USDC_SCALING_FACTOR = 1e12
 
+  // eslint-disable-next-line no-secrets/no-secrets
   const UNISWAP_V2_ROUTER_ADDRESS = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
 
   const CHAINLINK_ORACLE_DAI_ETH = '0x773616E4d11A78F511299002da57A0a94577F1f4'
+  // eslint-disable-next-line no-secrets/no-secrets
   const CHAINLINK_ORACLE_USDC_ETH = '0x986b5E1e1755e3C2440e960477f25201B0a8bbD4'
+  // eslint-disable-next-line no-secrets/no-secrets
   const CHAINLINK_ORACLE_USDT_ETH = '0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46'
   const PRICE_ONE_ORACLE = '0x1111111111111111111111111111111111111111'
 
