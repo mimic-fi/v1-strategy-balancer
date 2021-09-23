@@ -14,21 +14,16 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 //Balancer vault interface
 interface IBalancerVault {
-
     function getPool(bytes32 poolId) external view returns (address, uint256);
 
-     function getPoolTokens(bytes32 poolId)
+    function getPoolTokens(bytes32 poolId)
         external
         view
-        returns (
-            IERC20[] memory tokens,
-            uint256[] memory balances,
-            uint256 lastChangeBlock
-        );
+        returns (IERC20[] memory tokens, uint256[] memory balances, uint256 lastChangeBlock);
 
     struct JoinPoolRequest {
         IERC20[] assets;
@@ -37,13 +32,9 @@ interface IBalancerVault {
         bool fromInternalBalance;
     }
 
-    function joinPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        JoinPoolRequest memory request
-    ) external payable;
-
+    function joinPool(bytes32 poolId, address sender, address recipient, JoinPoolRequest memory request)
+        external
+        payable;
 
     struct ExitPoolRequest {
         IERC20[] assets;
@@ -52,14 +43,13 @@ interface IBalancerVault {
         bool toInternalBalance;
     }
 
-    function exitPool(
-        bytes32 poolId,
-        address sender,
-        address payable recipient,
-        ExitPoolRequest memory request
-    ) external;
+    function exitPool(bytes32 poolId, address sender, address payable recipient, ExitPoolRequest memory request)
+        external;
 
-    enum SwapKind { GIVEN_IN, GIVEN_OUT }
+    enum SwapKind {
+        GIVEN_IN,
+        GIVEN_OUT
+    }
 
     struct SingleSwap {
         bytes32 poolId;
@@ -77,11 +67,8 @@ interface IBalancerVault {
         bool toInternalBalance;
     }
 
-    function swap(
-        SingleSwap memory singleSwap,
-        FundManagement memory funds,
-        uint256 limit,
-        uint256 deadline
-    ) external payable returns (uint256);
-
+    function swap(SingleSwap memory singleSwap, FundManagement memory funds, uint256 limit, uint256 deadline)
+        external
+        payable
+        returns (uint256);
 }
