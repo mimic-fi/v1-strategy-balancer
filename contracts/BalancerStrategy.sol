@@ -108,9 +108,6 @@ abstract contract BalancerStrategy is IStrategy {
     }
 
     function onJoin(uint256 amount, bytes memory) external override onlyVault returns (uint256) {
-        //Claim comp into token
-        claim();
-
         uint256 initialTokenBalance = _token.balanceOf(address(this));
         uint256 initialBPTBalance = IERC20(_poolAddress).balanceOf(address(this));
 
@@ -130,8 +127,6 @@ abstract contract BalancerStrategy is IStrategy {
     }
 
     function onExit(uint256 shares, bool, bytes memory) external override onlyVault returns (address, uint256) {
-        claim();
-
         invest(_token);
 
         uint256 initialTokenBalance = _token.balanceOf(address(this));
@@ -168,14 +163,6 @@ abstract contract BalancerStrategy is IStrategy {
 
         if (tokenBalance > 0) {
             _join(tokenBalance);
-        }
-    }
-
-    function claim() public {
-        uint256 tokenBalance = _balToken.balanceOf(address(this));
-
-        if (tokenBalance > 0) {
-            _swap(_balToken, _token, tokenBalance);
         }
     }
 
