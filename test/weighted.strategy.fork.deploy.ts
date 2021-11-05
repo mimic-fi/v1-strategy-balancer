@@ -19,6 +19,7 @@ describe('BalancerWeightedStrategy - Deploy', function () {
   })
 
   before('deploy vault', async () => {
+    const maxSlippage = fp(0.02)
     const protocolFee = fp(0.00003)
     const priceOracle = owner.address // random address
     const swapConnector = owner.address // random address
@@ -26,6 +27,7 @@ describe('BalancerWeightedStrategy - Deploy', function () {
     const whitelistedStrategies: string[] = []
 
     vault = await deploy('@mimic-fi/v1-vault/artifacts/contracts/Vault.sol/Vault', [
+      maxSlippage,
       protocolFee,
       priceOracle,
       swapConnector,
@@ -55,9 +57,6 @@ describe('BalancerWeightedStrategy - Deploy', function () {
     expect(await strategy.getVault()).to.be.equal(vault.address)
     expect(await strategy.getToken()).to.be.equal(dai.address)
     expect(await strategy.getMetadataURI()).to.be.equal('metadata:uri')
-
-    expect(await strategy.getTotalShares()).to.be.equal(0)
-
     expect(await strategy.getTotalShares()).to.be.equal(0)
   })
 })

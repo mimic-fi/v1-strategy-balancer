@@ -74,6 +74,7 @@ describe('BalancerWeightedStrategy - DAI - Join', function () {
   })
 
   before('deploy vault', async () => {
+    const maxSlippage = fp(0.02)
     const protocolFee = fp(0.00003)
     const whitelistedTokens: string[] = []
     const whitelistedStrategies: string[] = []
@@ -85,6 +86,7 @@ describe('BalancerWeightedStrategy - DAI - Join', function () {
     const swapConnector = await deploy('UniswapConnector', [UNISWAP_V2_ROUTER_ADDRESS])
 
     vault = await deploy('@mimic-fi/v1-vault/artifacts/contracts/Vault.sol/Vault', [
+      maxSlippage,
       protocolFee,
       priceOracle.address,
       swapConnector.address,
@@ -151,29 +153,6 @@ describe('BalancerWeightedStrategy - DAI - Join', function () {
     const bptBalance = await bpt.balanceOf(strategy.address)
     const totalShares = await strategy.getTotalShares()
     expect(totalShares).to.be.equal(bptBalance)
-  })
-
-  let initialBalance: BigNumber
-  before('save initial Balance', async () => {
-    initialBalance = await strategy.getTokenBalance()
-  })
-
-  it('has strategy gains on swap DAI to WETH', async () => {
-    //Trader swaps the pool
-    const amount = fp(1000000)
-    await swap(amount, dai, weth)
-
-    const finalBalance = await strategy.getTokenBalance()
-    expect(finalBalance.gt(initialBalance)).to.be.true
-  })
-
-  it('still has strategy gains on swap back WETH to DAI', async () => {
-    //Trader swaps the pool
-    const amount = await weth.balanceOf(trader.address)
-    await swap(amount, weth, dai)
-
-    const finalBalance = await strategy.getTokenBalance()
-    expect(finalBalance.gt(initialBalance)).to.be.true
   })
 
   it('more gains to recover lost in single token join slipage', async () => {

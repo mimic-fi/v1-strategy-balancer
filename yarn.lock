@@ -592,10 +592,10 @@
   dependencies:
     "@openzeppelin/contracts" "^4.1.0"
 
-"@mimic-fi/v1-vault@^0.0.2":
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-vault/-/v1-vault-0.0.2.tgz#abbb2683f54ac576d3ab9df78ba877c007ccee5b"
-  integrity sha512-BNxa5EnIbsZ2JkJ/03l3b4iOHFNQgPJtyV5x4GrL25MtJ2vck3x8LspT2OO/Asf8k5bLERvQOktZ+8XfNgR2oA==
+"@mimic-fi/v1-vault@0.0.3":
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-vault/-/v1-vault-0.0.3.tgz#ceb65b6b150f66b6d8aa0c41eb22f74d9e78f46a"
+  integrity sha512-Dx39B/5x2yANT/jeXNRz8FLy0YQvw7DusVtf0yPLg6swOrLIpiquAhst0wPA86Y40ex932fAidIlCWCv1zc1tQ==
   dependencies:
     "@openzeppelin/contracts" "^4.1.0"
 

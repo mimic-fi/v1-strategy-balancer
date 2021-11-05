@@ -15,7 +15,7 @@
     "test:fork": "yarn test --fork mainnet --block-number 13131159"
   },
   "dependencies": {
-    "@mimic-fi/v1-vault": "^0.0.2",
+    "@mimic-fi/v1-vault": "0.0.3",
     "@openzeppelin/contracts": "^4.1.0"
   },
   "devDependencies": {
