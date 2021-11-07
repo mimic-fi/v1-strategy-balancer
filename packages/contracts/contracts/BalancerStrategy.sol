@@ -38,17 +38,19 @@ abstract contract BalancerStrategy is IStrategy {
 
     IVault internal immutable _vault;
     IERC20 internal immutable _token;
+    IERC20 internal immutable _balToken;
+    IBalancerVault internal immutable _balancerVault;
 
     string private _metadataURI;
     uint256 internal _totalShares;
 
-    IBalancerVault internal immutable _balancerVault;
-    IERC20 internal immutable _balToken;
+    uint256 internal immutable _slippage;
+    uint256 internal immutable _tokenScale;
+
     bytes32 internal immutable _poolId;
     address internal immutable _poolAddress;
     uint256 internal immutable _tokenIndex;
-    uint256 internal immutable _slippage;
-    uint256 internal immutable _tokenScale;
+    IERC20[] internal _tokens;
 
     modifier onlyVault() {
         require(address(_vault) == msg.sender, 'CALLER_IS_NOT_VAULT');
@@ -60,7 +62,6 @@ abstract contract BalancerStrategy is IStrategy {
         IERC20 token,
         IBalancerVault balancerVault,
         bytes32 poolId,
-        uint256 tokenIndex,
         IERC20 balToken,
         uint256 slippage,
         string memory metadata
@@ -71,12 +72,13 @@ abstract contract BalancerStrategy is IStrategy {
         _token = token;
         _balancerVault = balancerVault;
         _poolId = poolId;
-        _tokenIndex = tokenIndex;
         _balToken = balToken;
         _slippage = slippage;
         _metadataURI = metadata;
-        _tokenScale = _getTokenScale(token);
 
+        _setTokens(balancerVault, poolId);
+        _tokenScale = _getTokenScale(token);
+        _tokenIndex = _getTokenIndex(token);
         (_poolAddress, ) = balancerVault.getPool(poolId);
     }
 
@@ -243,12 +245,25 @@ abstract contract BalancerStrategy is IStrategy {
         return 10**diff;
     }
 
+    function _getTokenIndex(IERC20 token) internal view returns (uint256) {
+        uint256 length = _tokens.length;
+        for (uint256 i = 0; i < length; i++) if (_tokens[i] == token) return i;
+        revert('TOKEN_DOES_NOT_BELONG_TO_POOL');
+    }
+
+    function _setTokens(IBalancerVault vault, bytes32 poolId) internal {
+        (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
+        _tokens = new IERC20[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) _tokens[i] = tokens[i];
+    }
+
     function _buildBalancerTokensParams(uint256 index, uint256 amount)
         internal
         view
         returns (IERC20[] memory tokens, uint256[] memory amounts)
     {
-        (tokens, , ) = _balancerVault.getPoolTokens(_poolId);
+        tokens = new IERC20[](_tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) tokens[i] = _tokens[i];
         amounts = new uint256[](tokens.length);
         amounts[index] = amount;
     }
