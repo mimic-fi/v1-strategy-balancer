@@ -16,15 +16,11 @@ pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 
+import './balancer/IStablePool.sol';
+
 import './BalancerStrategy.sol';
-import './LogExpMath.sol';
-import './IStablePool.sol';
 
-contract BalancerStableStrategy is BalancerStrategy, LogExpMath {
-    using FixedPoint for uint256;
-
-    uint256 private immutable _tokenScale;
-
+contract BalancerStableStrategy is BalancerStrategy {
     constructor(
         IVault vault,
         IERC20 token,
@@ -35,16 +31,12 @@ contract BalancerStableStrategy is BalancerStrategy, LogExpMath {
         uint256 slippage,
         string memory metadata
     ) BalancerStrategy(vault, token, balancerVault, poolId, tokenIndex, balToken, slippage, metadata) {
-        //Token must support decimals()
-        uint256 decimals = IERC20Metadata(address(token)).decimals();
-        uint256 diff = 18 - decimals;
-        _tokenScale = 10**diff;
+        // solhint-disable-previous-line no-empty-blocks
     }
 
-    function _getTokenPerBPTPrice() internal view override returns (uint256) {
+    function getTokenPerBPTPrice() public view override returns (uint256) {
         IStablePool stablePool = IStablePool(_poolAddress);
         uint256 rate = stablePool.getRate();
-
         return rate / _tokenScale;
     }
 }
