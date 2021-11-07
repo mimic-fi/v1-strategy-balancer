@@ -1,0 +1,24 @@
+specVersion: 0.0.2
+description: Mimic Finance
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum/contract
+    name: Balancer Strategy
+    network: {{network}}
+    source:
+      address: '{{strategy}}'
+      abi: BalancerStrategy
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.3
+      language: wasm/assemblyscript
+      entities:
+        - Vault
+      abis:
+        - name: BalancerStrategy
+          file: ./abi/BalancerStrategy.json
+      blockHandlers:
+        - handler: handleBlock
+      file: ./src/BalancerStrategy.ts
