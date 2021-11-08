@@ -77,9 +77,6 @@ abstract contract BalancerStrategy is IStrategy {
         _metadataURI = metadata;
 
         (_poolAddress, ) = balancerVault.getPool(poolId);
-
-        token.approve(address(vault), _MAX_UINT256);
-        token.approve(address(balancerVault), _MAX_UINT256);
     }
 
     function getVault() external view returns (address) {
@@ -137,12 +134,8 @@ abstract contract BalancerStrategy is IStrategy {
 
         _totalShares = _totalShares.sub(shares);
 
+        _token.approve(address(_vault), amount);
         return (address(_token), amount);
-    }
-
-    function approveTokenSpenders() external {
-        _approveToken(address(_vault));
-        _approveToken(address(_balancerVault));
     }
 
     function invest(IERC20 token) public {
@@ -183,6 +176,7 @@ abstract contract BalancerStrategy is IStrategy {
             fromInternalBalance: false
         });
 
+        _token.approve(address(_balancerVault), amount);
         _balancerVault.joinPool(_poolId, address(this), address(this), request);
     }
 
@@ -257,17 +251,6 @@ abstract contract BalancerStrategy is IStrategy {
         }
 
         minAmountOut = FixedPoint.mulUp(FixedPoint.mulUp(amountIn, price), FixedPoint.ONE - _slippage);
-    }
-
-    function _approveToken(address spender) private {
-        uint256 allowance = _token.allowance(address(this), spender);
-        if (allowance < _MAX_UINT256) {
-            if (allowance > 0) {
-                // Some tokens revert when changing non-zero approvals
-                _token.approve(spender, 0);
-            }
-            _token.approve(spender, _MAX_UINT256);
-        }
     }
 
     function _safeTransfer(IERC20 token, address to, uint256 amount) private {
