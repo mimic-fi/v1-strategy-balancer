@@ -34,7 +34,7 @@ contract BalancerStableStrategy is BalancerStrategy {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getTokenPerBPTPrice() public view override returns (uint256) {
+    function getBptPerTokenPrice() public view override returns (uint256) {
         IStablePool stablePool = IStablePool(_poolAddress);
         uint256 rate = stablePool.getRate();
         return rate / _tokenScale;

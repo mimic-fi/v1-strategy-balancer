@@ -101,7 +101,7 @@ abstract contract BalancerStrategy is IStrategy {
         return 0;
     }
 
-    function getTokenPerBPTPrice() public view virtual returns (uint256);
+    function getBptPerTokenPrice() public view virtual returns (uint256);
 
     function onJoin(uint256 amount, bytes memory) external override onlyVault returns (uint256) {
         uint256 initialTokenBalance = _token.balanceOf(address(this));
@@ -225,9 +225,9 @@ abstract contract BalancerStrategy is IStrategy {
     {
         uint256 price;
         if (address(tokenIn) == _poolAddress) {
-            price = getTokenPerBPTPrice();
+            price = getBptPerTokenPrice();
         } else if (address(tokenOut) == _poolAddress) {
-            price = FixedPoint.div(FixedPoint.ONE, getTokenPerBPTPrice());
+            price = FixedPoint.div(FixedPoint.ONE, getBptPerTokenPrice());
         } else {
             address priceOracle = _vault.priceOracle();
             price = IPriceOracle(priceOracle).getTokenPrice(address(tokenOut), address(tokenIn));
