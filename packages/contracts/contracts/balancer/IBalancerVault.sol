@@ -16,7 +16,6 @@ pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-//Balancer vault interface
 interface IBalancerVault {
     function getPool(bytes32 poolId) external view returns (address, uint256);
 

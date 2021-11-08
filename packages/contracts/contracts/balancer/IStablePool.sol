@@ -14,7 +14,6 @@
 
 pragma solidity ^0.8.0;
 
-//Balancer stable pool interface
 interface IStablePool {
     function getRate() external view returns (uint256);
 }

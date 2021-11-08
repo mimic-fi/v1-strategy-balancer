@@ -18,4 +18,6 @@ import '@mimic-fi/v1-vault/contracts/Vault.sol';
 import '@mimic-fi/v1-uniswap-connector/contracts/UniswapConnector.sol';
 import '@mimic-fi/v1-chainlink-price-oracle/contracts/ChainLinkPriceOracle.sol';
 
-contract Imports {}
+contract Imports {
+    // solhint-disable-previous-line no-empty-blocks
+}

@@ -16,14 +16,13 @@ pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 
+import './balancer/LogExpMath.sol';
+import './balancer/IWeightedPool.sol';
+
 import './BalancerStrategy.sol';
-import './LogExpMath.sol';
-import './IWeightedPool.sol';
 
 contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
     using FixedPoint for uint256;
-
-    uint256 private immutable _tokenScale;
 
     constructor(
         IVault vault,
@@ -35,18 +34,15 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
         uint256 slippage,
         string memory metadata
     ) BalancerStrategy(vault, token, balancerVault, poolId, tokenIndex, balToken, slippage, metadata) {
-        //Token must support decimals()
-        uint256 decimals = IERC20Metadata(address(token)).decimals();
-        uint256 diff = 18 - decimals;
-        _tokenScale = 10**diff;
+        // solhint-disable-previous-line no-empty-blocks
     }
 
-    function _getTokenPerBPTPrice() internal view override returns (uint256) {
+    function getBptPerTokenPrice() public view override returns (uint256) {
         (IERC20[] memory tokens, , ) = _balancerVault.getPoolTokens(_poolId);
 
         IWeightedPool weightedPool = IWeightedPool(_poolAddress);
 
-        uint256[] memory weigths = weightedPool.getNormalizedWeights();
+        uint256[] memory weights = weightedPool.getNormalizedWeights();
 
         uint256 invariant = weightedPool.getInvariant();
         uint256 totalSupply = IERC20(_poolAddress).totalSupply();
@@ -54,19 +50,17 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
         address priceOracle = _vault.priceOracle();
 
         uint256 sumPrices;
-        uint256 divider = FixedPoint.ONE;
-        for (uint256 i; i < tokens.length; i++) {
-            uint256 price;
-            if (tokens[i] == _token) {
-                price = FixedPoint.ONE;
-            } else {
-                price = IPriceOracle(priceOracle).getTokenPrice(address(_token), address(tokens[i])) * _tokenScale;
-            }
+        uint256 divisor = FixedPoint.ONE;
 
-            sumPrices = sumPrices.add(pow(price, weigths[i]));
-            divider = divider.mul(pow(weigths[i], weigths[i]));
+        for (uint256 i; i < tokens.length; i++) {
+            uint256 price = tokens[i] == _token
+                ? FixedPoint.ONE
+                : IPriceOracle(priceOracle).getTokenPrice(address(_token), address(tokens[i])) * _tokenScale;
+
+            sumPrices = sumPrices.add(pow(price, weights[i]));
+            divisor = divisor.mul(pow(weights[i], weights[i]));
         }
 
-        return invariant.mul(sumPrices).divUp(totalSupply).divUp(divider) / _tokenScale;
+        return invariant.mul(sumPrices).divUp(totalSupply).divUp(divisor) / _tokenScale;
     }
 }
