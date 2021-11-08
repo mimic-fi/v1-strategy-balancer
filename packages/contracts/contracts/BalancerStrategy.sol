@@ -38,7 +38,6 @@ abstract contract BalancerStrategy is IStrategy {
 
     IVault internal immutable _vault;
     IERC20 internal immutable _token;
-    IERC20 internal immutable _balToken;
     IBalancerVault internal immutable _balancerVault;
 
     string private _metadataURI;
@@ -62,7 +61,6 @@ abstract contract BalancerStrategy is IStrategy {
         IERC20 token,
         IBalancerVault balancerVault,
         bytes32 poolId,
-        IERC20 balToken,
         uint256 slippage,
         string memory metadata
     ) {
@@ -72,7 +70,6 @@ abstract contract BalancerStrategy is IStrategy {
         _token = token;
         _balancerVault = balancerVault;
         _poolId = poolId;
-        _balToken = balToken;
         _slippage = slippage;
         _metadataURI = metadata;
 

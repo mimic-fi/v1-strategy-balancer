@@ -21,19 +21,17 @@ contract BalancerStableStrategyFactory {
 
     IVault public vault;
     IBalancerVault public balancerVault;
-    IERC20 public balToken;
 
-    constructor(IVault _vault, IBalancerVault _balancerVault, IERC20 _balToken) {
+    constructor(IVault _vault, IBalancerVault _balancerVault) {
         vault = _vault;
         balancerVault = _balancerVault;
-        balToken = _balToken;
     }
 
     function create(IERC20 token, bytes32 poolId, uint256 slippage, string memory metadata)
         external
         returns (BalancerStableStrategy strategy)
     {
-        strategy = new BalancerStableStrategy(vault, token, balancerVault, poolId, balToken, slippage, metadata);
+        strategy = new BalancerStableStrategy(vault, token, balancerVault, poolId, slippage, metadata);
         emit StrategyCreated(strategy);
     }
 }

@@ -21,19 +21,17 @@ contract BalancerWeightedStrategyFactory {
 
     IVault public vault;
     IBalancerVault public balancerVault;
-    IERC20 public balToken;
 
-    constructor(IVault _vault, IBalancerVault _balancerVault, IERC20 _balToken) {
+    constructor(IVault _vault, IBalancerVault _balancerVault) {
         vault = _vault;
         balancerVault = _balancerVault;
-        balToken = _balToken;
     }
 
     function create(IERC20 token, bytes32 poolId, uint256 slippage, string memory metadata)
         external
         returns (BalancerWeightedStrategy strategy)
     {
-        strategy = new BalancerWeightedStrategy(vault, token, balancerVault, poolId, balToken, slippage, metadata);
+        strategy = new BalancerWeightedStrategy(vault, token, balancerVault, poolId, slippage, metadata);
         emit StrategyCreated(strategy);
     }
 }

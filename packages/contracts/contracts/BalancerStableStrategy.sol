@@ -26,10 +26,9 @@ contract BalancerStableStrategy is BalancerStrategy {
         IERC20 token,
         IBalancerVault balancerVault,
         bytes32 poolId,
-        IERC20 balToken,
         uint256 slippage,
         string memory metadata
-    ) BalancerStrategy(vault, token, balancerVault, poolId, balToken, slippage, metadata) {
+    ) BalancerStrategy(vault, token, balancerVault, poolId, slippage, metadata) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
