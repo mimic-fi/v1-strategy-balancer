@@ -629,10 +629,10 @@
   dependencies:
     "@openzeppelin/contracts" "^4.1.0"
 
-"@mimic-fi/v1-vault@0.0.3":
-  version "0.0.3"
-  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-vault/-/v1-vault-0.0.3.tgz#ceb65b6b150f66b6d8aa0c41eb22f74d9e78f46a"
-  integrity sha512-Dx39B/5x2yANT/jeXNRz8FLy0YQvw7DusVtf0yPLg6swOrLIpiquAhst0wPA86Y40ex932fAidIlCWCv1zc1tQ==
+"@mimic-fi/v1-vault@0.0.4":
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-vault/-/v1-vault-0.0.4.tgz#f5da8ae144979d3fc4ff500f1c1b9c06e1f14dfa"
+  integrity sha512-u+VjOWAaIBxUMKYcI9HxEZRRncedjZccl/Fb+kfqoDO6vFGJ7DheS3a24IjHtV+7l2T/V2RMsoQyD609+Z/QhQ==
   dependencies:
     "@openzeppelin/contracts" "^4.1.0"
 
@@ -8176,7 +8176,7 @@ prettier-linter-helpers@^1.0.0:
   dependencies:
     fast-diff "^1.1.2"
 
-"prettier-plugin-solidity@github:lkndjrt/prettier-plugin-solidity":
+prettier-plugin-solidity@lkndjrt/prettier-plugin-solidity:
   version "1.0.0-beta.18"
   resolved "https://codeload.github.com/lkndjrt/prettier-plugin-solidity/tar.gz/e7b6b2d7fb2cfd820f0cc98095dac00a60352010"
   dependencies:

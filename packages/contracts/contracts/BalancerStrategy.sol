@@ -95,11 +95,6 @@ abstract contract BalancerStrategy is IStrategy {
         return _totalShares;
     }
 
-    function getRate() external view override returns (uint256) {
-        // TODO: delete function
-        return 0;
-    }
-
     function getBptPerTokenPrice() public view virtual returns (uint256);
 
     function onJoin(uint256 amount, bytes memory) external override onlyVault returns (uint256) {
