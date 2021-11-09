@@ -3,16 +3,27 @@
 # Exit script as soon as a command fails.
 set -o errexit
 
-# Strategy addresses
-strategy_localhost=0x646A336CD183dc947D3AdbEfb19c3cF637720318
-strategy_kovan=0x2533b011dDd4417F4D616339237Ce316388c70b0
-strategy_rinkeby=0x3683799B950B9680Fe9B5169e641e6DA5Fc751Ad
-strategy_mainnet=0x0000000000000000000000000000000000000001
+# Weighted strategy factory addresses
+weighted_factory_localhost=0x0000000000000000000000000000000000000001
+weighted_factory_kovan=0x0000000000000000000000000000000000000001
+weighted_factory_rinkeby=0x0000000000000000000000000000000000000001
+weighted_factory_mainnet=0x0000000000000000000000000000000000000001
 
-# Deployment block numbers
-start_block_kovan=27318406
-start_block_rinkeby=9264082
-start_block_mainnet=
+# Weighted deployment block numbers
+weighted_start_block_kovan=
+weighted_start_block_rinkeby=
+weighted_start_block_mainnet=
+
+# Stable strategy factory addresses
+stable_factory_localhost=0x0000000000000000000000000000000000000001
+stable_factory_kovan=0x0000000000000000000000000000000000000001
+stable_factory_rinkeby=0x0000000000000000000000000000000000000001
+stable_factory_mainnet=0x0000000000000000000000000000000000000001
+
+# Stable deployment block numbers
+stable_start_block_kovan=
+stable_start_block_rinkeby=
+stable_start_block_mainnet=
 
 # Validate network
 networks=(localhost kovan rinkeby mainnet)
@@ -28,24 +39,45 @@ else
   ENV=${NETWORK}
 fi
 
-# Load start block
-if [[ -z $START_BLOCK ]]; then
-  START_BLOCK_VAR=start_block_$NETWORK
-  START_BLOCK=${!START_BLOCK_VAR}
+# Load weighted start block
+if [[ -z $WEIGHTED_START_BLOCK ]]; then
+  WEIGHTED_START_BLOCK_VAR=weighted_start_block_$NETWORK
+  WEIGHTED_START_BLOCK=${!WEIGHTED_START_BLOCK_VAR}
 fi
-if [[ -z $START_BLOCK ]]; then
-  START_BLOCK=0
+if [[ -z $WEIGHTED_START_BLOCK ]]; then
+  WEIGHTED_START_BLOCK=0
 fi
 
-# Try loading strategy address if missing
-if [[ -z $STRATEGY ]]; then
-  STRATEGY_VAR=strategy_$NETWORK
-  STRATEGY=${!STRATEGY_VAR}
+# Try loading weighted factory address if missing
+if [[ -z $WEIGHTED_FACTORY ]]; then
+  WEIGHTED_FACTORY_VAR=weighted_factory_$NETWORK
+  WEIGHTED_FACTORY=${!WEIGHTED_FACTORY_VAR}
 fi
 
 # Validate strategy address
-if [[ -z $STRATEGY ]]; then
-  echo 'Please make sure a Strategy address is provided'
+if [[ -z $WEIGHTED_FACTORY ]]; then
+  echo 'Please make sure an address for the weighted factory is provided'
+  exit 1
+fi
+
+# Load stable start block
+if [[ -z $STABLE_START_BLOCK ]]; then
+  STABLE_START_BLOCK_VAR=stable_start_block_$NETWORK
+  STABLE_START_BLOCK=${!STABLE_START_BLOCK_VAR}
+fi
+if [[ -z $STABLE_START_BLOCK ]]; then
+  STABLE_START_BLOCK=0
+fi
+
+# Try loading stable factory address if missing
+if [[ -z $STABLE_FACTORY ]]; then
+  STABLE_FACTORY_VAR=stable_factory_$NETWORK
+  STABLE_FACTORY=${!STABLE_FACTORY_VAR}
+fi
+
+# Validate strategy address
+if [[ -z $STABLE_FACTORY ]]; then
+  echo 'Please make sure an address for the stable factory is provided'
   exit 1
 fi
 
@@ -59,8 +91,10 @@ fi
 echo "Preparing new subgraph manifest for Strategy address ${STRATEGY} and network ${NETWORK}"
 cp subgraph.template.yaml subgraph.yaml
 sed -i -e "s/{{network}}/${ENV}/g" subgraph.yaml
-sed -i -e "s/{{strategy}}/${STRATEGY}/g" subgraph.yaml
-sed -i -e "s/{{startBlock}}/${START_BLOCK}/g" subgraph.yaml
+sed -i -e "s/{{weightedFactory}}/${WEIGHTED_FACTORY}/g" subgraph.yaml
+sed -i -e "s/{{weightedStartBlock}}/${WEIGHTED_START_BLOCK}/g" subgraph.yaml
+sed -i -e "s/{{stableFactory}}/${STABLE_FACTORY}/g" subgraph.yaml
+sed -i -e "s/{{stableStartBlock}}/${STABLE_START_BLOCK}/g" subgraph.yaml
 rm -f subgraph.yaml-e
 
 # Run codegen and build

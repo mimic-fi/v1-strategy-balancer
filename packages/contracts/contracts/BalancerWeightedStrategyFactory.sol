@@ -17,7 +17,7 @@ pragma solidity ^0.8.0;
 import './BalancerWeightedStrategy.sol';
 
 contract BalancerWeightedStrategyFactory {
-    event StrategyCreated(BalancerWeightedStrategy strategy);
+    event StrategyCreated(BalancerWeightedStrategy indexed strategy);
 
     IVault public vault;
     IBalancerVault public balancerVault;
