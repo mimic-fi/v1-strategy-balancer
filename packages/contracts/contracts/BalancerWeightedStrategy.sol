@@ -29,11 +29,9 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
         IERC20 token,
         IBalancerVault balancerVault,
         bytes32 poolId,
-        uint256 tokenIndex,
-        IERC20 balToken,
         uint256 slippage,
         string memory metadata
-    ) BalancerStrategy(vault, token, balancerVault, poolId, tokenIndex, balToken, slippage, metadata) {
+    ) BalancerStrategy(vault, token, balancerVault, poolId, slippage, metadata) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

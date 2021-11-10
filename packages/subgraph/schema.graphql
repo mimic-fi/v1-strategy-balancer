@@ -1,5 +1,12 @@
+type Factory @entity {
+  id: ID!
+  address: String!
+  strategies: [Strategy!]!
+}
+
 type Strategy @entity {
   id: ID!
+  factory: Factory!
   vault: String!
   token: String!
   metadata: String!
