@@ -97,7 +97,7 @@ abstract contract BalancerStrategy is IStrategy {
 
     function getBptPerTokenPrice() public view virtual returns (uint256);
 
-    function onJoin(uint256 amount, bytes memory) external override onlyVault returns (uint256) {
+    function onJoin(uint256 amount, bytes memory) external override onlyVault returns (uint256 shares) {
         IERC20 token = _token;
         uint256 initialTokenBalance = token.balanceOf(address(this));
         uint256 initialBPTBalance = IERC20(_poolAddress).balanceOf(address(this));
@@ -108,13 +108,11 @@ abstract contract BalancerStrategy is IStrategy {
         uint256 callerBPTAmount = amount.mul(finalBPTBalance.sub(initialBPTBalance)).div(initialTokenBalance);
 
         uint256 totalShares = _totalShares;
-        uint256 shares = totalShares == 0
+        shares = totalShares == 0
             ? callerBPTAmount
             : totalShares.mul(callerBPTAmount).div(finalBPTBalance.sub(callerBPTAmount));
 
         _totalShares = totalShares.add(shares);
-
-        return shares;
     }
 
     function onExit(uint256 shares, bool, bytes memory) external override onlyVault returns (address, uint256) {
