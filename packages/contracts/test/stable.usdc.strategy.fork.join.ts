@@ -1,4 +1,4 @@
-import { bn, deploy, fp, getSigner, impersonate, impersonateWhale, instanceAt } from '@mimic-fi/v1-helpers'
+import { deploy, fp, getSigner, impersonate, impersonateWhale, instanceAt } from '@mimic-fi/v1-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 import { expect } from 'chai'
 import { BigNumber, Contract } from 'ethers'
@@ -10,7 +10,6 @@ describe('BalancerStableStrategy - USDC - Join', function () {
     trader: SignerWithAddress,
     vault: Contract,
     strategy: Contract,
-    bal: Contract,
     bVault: Contract,
     bpt: Contract,
     dai: Contract,
@@ -21,11 +20,9 @@ describe('BalancerStableStrategy - USDC - Join', function () {
   const BALANCER_VAULT = '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
   const POOL_DAI_USDC_USDT_ID = '0x06df3b2bbb68adc8b0e302443692037ed9f91b42000000000000000000000063'
   const POOL_DAI_USDC_USDT_ADDRESS = '0x06df3b2bbb68adc8b0e302443692037ed9f91b42'
-  const TOKEN_INDEX = 1
 
   // eslint-disable-next-line no-secrets/no-secrets
   const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
-  const BAL = '0xba100000625a3754423978a60c9317c58a424e3D'
   // eslint-disable-next-line no-secrets/no-secrets
   const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
   const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
@@ -43,8 +40,6 @@ describe('BalancerStableStrategy - USDC - Join', function () {
   // eslint-disable-next-line no-secrets/no-secrets
   const CHAINLINK_ORACLE_USDT_ETH = '0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46'
   const PRICE_ONE_ORACLE = '0x1111111111111111111111111111111111111111'
-
-  const MAX_UINT_256 = bn(2).pow(256).sub(1)
 
   const swap = async (amount: BigNumber, assetIn: Contract, assetOut: Contract) => {
     await assetIn.connect(trader).approve(bVault.address, amount)
@@ -107,7 +102,6 @@ describe('BalancerStableStrategy - USDC - Join', function () {
   before('load tokens', async () => {
     bVault = await instanceAt('IBalancerVault', BALANCER_VAULT)
     bpt = await instanceAt('IERC20', POOL_DAI_USDC_USDT_ADDRESS)
-    bal = await instanceAt('IERC20', BAL)
     dai = await instanceAt('IERC20', DAI)
     usdc = await instanceAt('IERC20', USDC)
   })
@@ -125,16 +119,9 @@ describe('BalancerStableStrategy - USDC - Join', function () {
       usdc.address,
       bVault.address,
       POOL_DAI_USDC_USDT_ID,
-      TOKEN_INDEX,
-      bal.address,
       slippage,
       'metadata:uri',
     ])
-  })
-
-  it('vault has max USDC allowance', async () => {
-    const allowance = await usdc.allowance(strategy.address, vault.address)
-    expect(allowance).to.be.equal(MAX_UINT_256)
   })
 
   it('join strategy', async () => {
@@ -196,16 +183,6 @@ describe('BalancerStableStrategy - USDC - Join', function () {
 
     const totalShares = await strategy.getTotalShares()
     expect(totalShares).to.be.equal(0)
-  })
-
-  it('can give token allowance to vault and ctoken', async () => {
-    await strategy.approveTokenSpenders()
-
-    const vaultAllowance = await usdc.allowance(strategy.address, vault.address)
-    expect(vaultAllowance).to.be.equal(MAX_UINT_256)
-
-    const balancerVaultAllowance = await usdc.allowance(strategy.address, BALANCER_VAULT)
-    expect(balancerVaultAllowance).to.be.equal(MAX_UINT_256)
   })
 
   it('handle USDC airdrops', async () => {

@@ -11,7 +11,6 @@ describe('BalancerWeightedStrategy - DAI - Join', function () {
     vault: Contract,
     strategy: Contract,
     dai: Contract,
-    bal: Contract,
     bVault: Contract,
     bpt: Contract,
     weth: Contract,
@@ -23,11 +22,9 @@ describe('BalancerWeightedStrategy - DAI - Join', function () {
   const POOL_DAI_WETH_ID = '0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a'
   // eslint-disable-next-line no-secrets/no-secrets
   const POOL_DAI_WETH_ADDRESS = '0x0b09deA16768f0799065C475bE02919503cB2a35'
-  const TOKEN_INDEX = 0
 
   // eslint-disable-next-line no-secrets/no-secrets
   const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
-  const BAL = '0xba100000625a3754423978a60c9317c58a424e3D'
   // eslint-disable-next-line no-secrets/no-secrets
   const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
   const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
@@ -39,8 +36,6 @@ describe('BalancerWeightedStrategy - DAI - Join', function () {
   // eslint-disable-next-line no-secrets/no-secrets
   const CHAINLINK_ORACLE_USDC_ETH = '0x986b5E1e1755e3C2440e960477f25201B0a8bbD4'
   const PRICE_ONE_ORACLE = '0x1111111111111111111111111111111111111111'
-
-  const MAX_UINT_256 = bn(2).pow(256).sub(1)
 
   const swap = async (amount: BigNumber, assetIn: Contract, assetOut: Contract) => {
     await assetIn.connect(trader).approve(bVault.address, amount)
@@ -99,7 +94,6 @@ describe('BalancerWeightedStrategy - DAI - Join', function () {
     bVault = await instanceAt('IBalancerVault', BALANCER_VAULT)
     dai = await instanceAt('IERC20', DAI)
     bpt = await instanceAt('IERC20', POOL_DAI_WETH_ADDRESS)
-    bal = await instanceAt('IERC20', BAL)
     weth = await instanceAt('IERC20', WETH)
     usdc = await instanceAt('IERC20', USDC)
   })
@@ -118,16 +112,9 @@ describe('BalancerWeightedStrategy - DAI - Join', function () {
       dai.address,
       bVault.address,
       POOL_DAI_WETH_ID,
-      TOKEN_INDEX,
-      bal.address,
       slippage,
       'metadata:uri',
     ])
-  })
-
-  it('vault has max DAI allowance', async () => {
-    const allowance = await dai.allowance(strategy.address, vault.address)
-    expect(allowance).to.be.equal(MAX_UINT_256)
   })
 
   it('join strategy', async () => {
@@ -189,16 +176,6 @@ describe('BalancerWeightedStrategy - DAI - Join', function () {
 
     const totalShares = await strategy.getTotalShares()
     expect(totalShares).to.be.equal(0)
-  })
-
-  it('can give token allowance to vault and ctoken', async () => {
-    await strategy.approveTokenSpenders()
-
-    const vaultAllowance = await dai.allowance(strategy.address, vault.address)
-    expect(vaultAllowance).to.be.equal(MAX_UINT_256)
-
-    const balancerVaultAllowance = await dai.allowance(strategy.address, BALANCER_VAULT)
-    expect(balancerVaultAllowance).to.be.equal(MAX_UINT_256)
   })
 
   it('handle DAI airdrops', async () => {

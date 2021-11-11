@@ -234,7 +234,7 @@ abstract contract BalancerStrategy is IStrategy {
 
     function _getTokenScale(IERC20 token) internal view returns (uint256) {
         uint256 decimals = IERC20Metadata(address(token)).decimals();
-        require(decimals > 18, 'TOKEN_WORKS_WITH_BIGGER_DECIMALS');
+        require(decimals <= 18, 'TOKEN_WORKS_WITH_BIGGER_DECIMALS');
         uint256 diff = 18 - decimals;
         return 10**diff;
     }
