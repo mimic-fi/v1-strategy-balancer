@@ -15,13 +15,13 @@
     "test:fork": "yarn test --fork mainnet --block-number 13131159"
   },
   "dependencies": {
+    "@mimic-fi/v1-chainlink-price-oracle": "^0.0.2",
+    "@mimic-fi/v1-uniswap-connector": "^0.0.2",
     "@mimic-fi/v1-vault": "0.0.4",
     "@openzeppelin/contracts": "^4.1.0"
   },
   "devDependencies": {
-    "@mimic-fi/v1-chainlink-price-oracle": "^0.0.1",
     "@mimic-fi/v1-helpers": "^0.0.4",
-    "@mimic-fi/v1-uniswap-connector": "^0.0.1",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@types/chai": "^4.2.18",
