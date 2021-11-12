@@ -5,6 +5,8 @@ import { BalancerPool as PoolContract } from '../types/templates/BalancerStrateg
 import { BalancerStrategy as StrategyContract } from '../types/BalancerStableStrategyFactory/BalancerStrategy'
 import { Rate as RateEntity, Strategy as StrategyEntity } from '../types/schema'
 
+let ONE = BigInt.fromString('1000000000000000000')
+
 export function createLastRate(strategy: StrategyEntity, block: ethereum.Block): void {
   let strategyAddress = Address.fromString(strategy.id)
   let rateId = strategy.id + '-' + block.timestamp.toString()
@@ -18,7 +20,7 @@ export function createLastRate(strategy: StrategyEntity, block: ethereum.Block):
   rate.save()
 
   strategy.lastRate = rateId
-  strategy.deposited = BigInt.fromI32(0) // TODO: implement
+  strategy.deposited = calculateDeposited(strategy)
   strategy.save()
 }
 
@@ -38,6 +40,19 @@ function calculateLiquidityMiningRate(strategy: StrategyEntity): BigInt {
   let poolAddress = getStrategyPool(strategyAddress)
   let bptBalance = getTokenBalance(poolAddress, strategyAddress)
   return bptBalance.div(totalShares)
+}
+
+function calculateDeposited(strategy: StrategyEntity): BigInt {
+  let strategyAddress = Address.fromString(strategy.id)
+  let totalShares = getStrategyShares(strategyAddress)
+  if (totalShares.equals(BigInt.fromI32(0))) {
+    return BigInt.fromI32(0)
+  }
+
+  let poolAddress = getStrategyPool(strategyAddress)
+  let bptBalance = getTokenBalance(poolAddress, strategyAddress)
+  let bptPrice = getStrategyBptPrice(strategyAddress)
+  return bptBalance.times(bptPrice).div(ONE)
 }
 
 export function getStrategyShares(address: Address): BigInt {
@@ -86,6 +101,18 @@ function getStrategyPool(address: Address): Address {
 
   log.warning('getPoolAddress() call reverted for {}', [address.toHexString()])
   return Address.fromString('0x0000000000000000000000000000000000000000')
+}
+
+function getStrategyBptPrice(address: Address): BigInt {
+  let strategyContract = StrategyContract.bind(address)
+  let bptPriceCall = strategyContract.try_getBptPerTokenPrice()
+
+  if (!bptPriceCall.reverted) {
+    return bptPriceCall.value
+  }
+
+  log.warning('getBptPerTokenPrice() call reverted for {}', [address.toHexString()])
+  return BigInt.fromI32(0)
 }
 
 export function getPoolRate(address: Address): BigInt {
