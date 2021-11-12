@@ -1,45 +1,43 @@
-import { Address, BigInt, ethereum, log } from '@graphprotocol/graph-ts'
+import {Address, BigInt, ethereum, log} from '@graphprotocol/graph-ts'
 
-import { Strategy as StrategyEntity, Rate as RateEntity } from '../types/schema'
+import { ERC20 as ERC20Contract } from '../types/templates/BalancerStrategy/ERC20'
+import { BalancerPool as PoolContract } from '../types/templates/BalancerStrategy/BalancerPool'
 import { BalancerStrategy as StrategyContract } from '../types/BalancerStableStrategyFactory/BalancerStrategy'
-
-let ONE = BigInt.fromString('1000000000000000000')
+import { Rate as RateEntity, Strategy as StrategyEntity } from '../types/schema'
 
 export function createLastRate(strategy: StrategyEntity, block: ethereum.Block): void {
-  let currentRate = calculateRate()
-
-  if (strategy.lastRate === null) {
-    storeLastRate(strategy, currentRate, BigInt.fromI32(0), block)
-  } else {
-    let lastRate = RateEntity.load(strategy.lastRate)!
-    if (lastRate.value.notEqual(currentRate)) {
-      let elapsed = block.number.minus(lastRate.block)
-      let accumulated = lastRate.accumulated.plus(lastRate.value.times(elapsed))
-      storeLastRate(strategy, currentRate, accumulated, block)
-    }
-  }
-}
-
-function storeLastRate(strategy: StrategyEntity, currentRate: BigInt, accumulated: BigInt, block: ethereum.Block): void {
-  let shares = getStrategyShares(Address.fromString(strategy.id))
+  let strategyAddress = Address.fromString(strategy.id)
   let rateId = strategy.id + '-' + block.timestamp.toString()
   let rate = new RateEntity(rateId)
-  rate.value = currentRate
-  rate.accumulated = accumulated
-  rate.shares = shares
+  rate.feeRate = calculateFeeRate(strategy)
+  rate.liquidityMiningRate = calculateLiquidityMiningRate(strategy)
+  rate.shares = getStrategyShares(strategyAddress)
   rate.strategy = strategy.id
   rate.timestamp = block.timestamp
   rate.block = block.number
   rate.save()
 
   strategy.lastRate = rateId
-  strategy.deposited = shares.isZero() ? BigInt.fromI32(0) : shares.times(currentRate).div(ONE)
+  strategy.deposited = BigInt.fromI32(0) // TODO: implement
   strategy.save()
 }
 
-function calculateRate(): BigInt {
-  // TODO: implement
-  return BigInt.fromI32(0)
+function calculateFeeRate(strategy: StrategyEntity): BigInt {
+  let strategyAddress = Address.fromString(strategy.id)
+  let poolAddress = getStrategyPool(strategyAddress)
+  return getPoolRate(poolAddress)
+}
+
+function calculateLiquidityMiningRate(strategy: StrategyEntity): BigInt {
+  let strategyAddress = Address.fromString(strategy.id)
+  let totalShares = getStrategyShares(strategyAddress)
+  if (totalShares.equals(BigInt.fromI32(0))) {
+    return BigInt.fromI32(0)
+  }
+
+  let poolAddress = getStrategyPool(strategyAddress)
+  let bptBalance = getTokenBalance(poolAddress, strategyAddress)
+  return bptBalance.div(totalShares)
 }
 
 export function getStrategyShares(address: Address): BigInt {
@@ -76,4 +74,40 @@ export function getStrategyMetadata(address: Address): string {
 
   log.warning('getMetadataURI() call reverted for {}', [address.toHexString()])
   return 'Unknown'
+}
+
+function getStrategyPool(address: Address): Address {
+  let strategyContract = StrategyContract.bind(address)
+  let poolAddressCall = strategyContract.try_getPoolAddress()
+
+  if (!poolAddressCall.reverted) {
+    return poolAddressCall.value
+  }
+
+  log.warning('getPoolAddress() call reverted for {}', [address.toHexString()])
+  return Address.fromString('0x0000000000000000000000000000000000000000')
+}
+
+export function getPoolRate(address: Address): BigInt {
+  let poolContract = PoolContract.bind(address)
+  let rateCall = poolContract.try_getRate()
+
+  if (!rateCall.reverted) {
+    return rateCall.value
+  }
+
+  log.warning('getRate() call reverted for {}', [address.toHexString()])
+  return BigInt.fromI32(0)
+}
+
+function getTokenBalance(address: Address, account: Address): BigInt {
+  let tokenContract = ERC20Contract.bind(address)
+  let balanceCall = tokenContract.try_balanceOf(account)
+
+  if (!balanceCall.reverted) {
+    return balanceCall.value
+  }
+
+  log.warning('balanceOf() call reverted for {}', [address.toHexString()])
+  return BigInt.fromI32(0)
 }

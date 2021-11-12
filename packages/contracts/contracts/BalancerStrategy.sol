@@ -95,6 +95,22 @@ abstract contract BalancerStrategy is IStrategy {
         return _totalShares;
     }
 
+    function getSlippage() external view returns (uint256) {
+        return _slippage;
+    }
+
+    function getPoolAddress() external view returns (address) {
+        return _poolAddress;
+    }
+
+    function getPoolId() external view returns (bytes32) {
+        return _poolId;
+    }
+
+    function getTokenIndex() external view returns (uint256) {
+        return _tokenIndex;
+    }
+
     function getBptPerTokenPrice() public view virtual returns (uint256);
 
     function onJoin(uint256 amount, bytes memory) external override onlyVault returns (uint256 shares) {
