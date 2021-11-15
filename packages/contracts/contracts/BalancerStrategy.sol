@@ -95,7 +95,7 @@ abstract contract BalancerStrategy is IStrategy {
         return _totalShares;
     }
 
-    function getSlippage() external view returns (uint256) {
+    function getSlippage() public view returns (uint256) {
         return _slippage;
     }
 
@@ -131,24 +131,21 @@ abstract contract BalancerStrategy is IStrategy {
         _totalShares = totalShares.add(shares);
     }
 
-    function onExit(uint256 shares, bool, bytes memory) external override onlyVault returns (address, uint256) {
-        IERC20 token = _token;
-        invest(token);
-
-        uint256 initialTokenBalance = token.balanceOf(address(this));
-        uint256 initialBPTBalance = IERC20(_poolAddress).balanceOf(address(this));
-        uint256 totalShares = _totalShares;
-        uint256 bptAmount = shares.mul(initialBPTBalance).div(totalShares);
-
-        _exit(bptAmount);
-
-        uint256 finalTokenAmount = token.balanceOf(address(this));
-        uint256 amount = finalTokenAmount.sub(initialTokenBalance);
-
-        _totalShares = totalShares.sub(shares);
-
-        token.approve(address(_vault), amount);
-        return (address(token), amount);
+    function onExit(uint256 shares, bool emergency, bytes memory data)
+        external
+        override
+        onlyVault
+        returns (address, uint256)
+    {
+        if (!emergency) {
+            // Invests before exiting and exit with standard slippage
+            invest(_token);
+            return _exit(shares, getSlippage());
+        } else {
+            // Do not invest to avoid any potential errors and exit with custom slippage
+            uint256 slippage = abi.decode(data, (uint256));
+            return _exit(shares, slippage);
+        }
     }
 
     function invest(IERC20 investingToken) public {
@@ -171,7 +168,7 @@ abstract contract BalancerStrategy is IStrategy {
 
     function _join(uint256 amount) internal {
         IERC20 token = _token;
-        uint256 minimumBPT = _getMinAmountOut(token, IERC20(_poolAddress), amount);
+        uint256 minimumBPT = _getMinAmountOut(token, IERC20(_poolAddress), amount, getSlippage());
         (IERC20[] memory tokens, uint256[] memory amountsIn) = _buildBalancerTokensParams(_tokenIndex, amount);
 
         IBalancerVault.JoinPoolRequest memory request = IBalancerVault.JoinPoolRequest({
@@ -185,8 +182,15 @@ abstract contract BalancerStrategy is IStrategy {
         _balancerVault.joinPool(_poolId, address(this), address(this), request);
     }
 
-    function _exit(uint256 bptAmount) internal {
-        uint256 minAmount = _getMinAmountOut(IERC20(_poolAddress), _token, bptAmount);
+    function _exit(uint256 shares, uint256 slippage) internal returns (address, uint256) {
+        IERC20 token = _token;
+
+        uint256 initialTokenBalance = token.balanceOf(address(this));
+        uint256 initialBPTBalance = IERC20(_poolAddress).balanceOf(address(this));
+        uint256 totalShares = _totalShares;
+        uint256 bptAmount = shares.mul(initialBPTBalance).div(totalShares);
+
+        uint256 minAmount = _getMinAmountOut(IERC20(_poolAddress), _token, bptAmount, slippage);
         (IERC20[] memory tokens, uint256[] memory minAmountsOut) = _buildBalancerTokensParams(_tokenIndex, minAmount);
 
         IBalancerVault.ExitPoolRequest memory request = IBalancerVault.ExitPoolRequest({
@@ -197,12 +201,20 @@ abstract contract BalancerStrategy is IStrategy {
         });
 
         _balancerVault.exitPool(_poolId, address(this), payable(address(this)), request);
+
+        uint256 finalTokenAmount = token.balanceOf(address(this));
+        uint256 amount = finalTokenAmount.sub(initialTokenBalance);
+
+        _totalShares = totalShares.sub(shares);
+
+        token.approve(address(_vault), amount);
+        return (address(token), amount);
     }
 
     function _swap(IERC20 tokenIn, IERC20 tokenOut, uint256 amountIn) internal returns (uint256) {
         require(tokenIn != tokenOut, 'SWAP_SAME_TOKEN');
 
-        uint256 minAmountOut = _getMinAmountOut(tokenIn, tokenOut, amountIn);
+        uint256 minAmountOut = _getMinAmountOut(tokenIn, tokenOut, amountIn, getSlippage());
         ISwapConnector swapConnector = ISwapConnector(_vault.swapConnector());
         uint256 expectedAmountOut = swapConnector.getAmountOut(address(tokenIn), address(tokenOut), amountIn);
         require(expectedAmountOut >= minAmountOut, 'EXPECTED_SWAP_MIN_AMOUNT');
@@ -231,7 +243,7 @@ abstract contract BalancerStrategy is IStrategy {
         return amountOut;
     }
 
-    function _getMinAmountOut(IERC20 tokenIn, IERC20 tokenOut, uint256 amountIn)
+    function _getMinAmountOut(IERC20 tokenIn, IERC20 tokenOut, uint256 amountIn, uint256 slippage)
         internal
         view
         returns (uint256 minAmountOut)
@@ -245,7 +257,7 @@ abstract contract BalancerStrategy is IStrategy {
             price = IPriceOracle(_vault.priceOracle()).getTokenPrice(address(tokenOut), address(tokenIn));
         }
 
-        minAmountOut = FixedPoint.mulUp(FixedPoint.mulUp(amountIn, price), FixedPoint.ONE - _slippage);
+        minAmountOut = FixedPoint.mulUp(FixedPoint.mulUp(amountIn, price), FixedPoint.ONE - slippage);
     }
 
     function _getTokenScale(IERC20 token) internal view returns (uint256) {
