@@ -7,9 +7,9 @@ dataSources:
     name: BalancerWeightedStrategyFactory
     network: {{network}}
     source:
-      address: '{{weightedFactory}}'
+      address: '{{factory}}'
       abi: BalancerWeightedStrategyFactory
-      startBlock: {{weightedStartBlock}}
+      startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.3
@@ -23,30 +23,8 @@ dataSources:
           file: ./abi/BalancerWeightedStrategyFactory.json
       eventHandlers:
         - event: StrategyCreated(indexed address)
-          handler: handleWeightedStrategyCreated
-      file: ./src/BalancerStrategy.ts
-  - kind: ethereum/contract
-    name: BalancerStableStrategyFactory
-    network: {{network}}
-    source:
-      address: '{{stableFactory}}'
-      abi: BalancerStableStrategyFactory
-      startBlock: {{stableStartBlock}}
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.3
-      language: wasm/assemblyscript
-      entities:
-        - Strategy
-      abis:
-        - name: BalancerStrategy
-          file: ./abi/BalancerStrategy.json
-        - name: BalancerStableStrategyFactory
-          file: ./abi/BalancerStableStrategyFactory.json
-      eventHandlers:
-        - event: StrategyCreated(indexed address)
-          handler: handleStableStrategyCreated
-      file: ./src/BalancerStrategy.ts
+          handler: handleStrategyCreated
+      file: ./src/WeightedBalancerStrategy.ts
 templates:
   - kind: ethereum/contract
     name: BalancerStrategy

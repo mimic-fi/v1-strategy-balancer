@@ -5,7 +5,7 @@ import { BalancerWeightedStrategyFactory as FactoryContract } from '../types/Bal
 import { Factory as FactoryEntity, Strategy as StrategyEntity } from '../types/schema'
 import { createLastRate, getStrategyToken, getStrategyMetadata } from './BalancerStrategy'
 
-const FACTORY_ID = 'WEIGHTED'
+const FACTORY_ID = 'BALANCER_WEIGHTED'
 
 export function handleStrategyCreated(event: StrategyCreated): void {
   let factory = loadOrCreateFactory(event.address)
@@ -47,6 +47,7 @@ function loadOrCreateStrategy(strategyAddress: Address, factoryAddress: Address)
 
   if (strategy === null) {
     strategy = new StrategyEntity(id)
+    strategy.factory = factoryAddress.toHexString()
     strategy.vault = getFactoryVault(factoryAddress)
     strategy.token = ''
     strategy.metadata = ''

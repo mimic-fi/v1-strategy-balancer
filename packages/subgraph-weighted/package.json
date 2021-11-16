@@ -1,5 +1,5 @@
 {
-  "name": "@mimic-fi/v1-strategy-balancer-subgraph",
+  "name": "@mimic-fi/v1-strategy-balancer-weighted-subgraph",
   "private": true,
   "version": "0.0.1",
   "license": "GPL-3.0",

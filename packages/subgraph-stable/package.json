@@ -1,0 +1,23 @@
+{
+  "name": "@mimic-fi/v1-strategy-balancer-stable-subgraph",
+  "private": true,
+  "version": "0.0.1",
+  "license": "GPL-3.0",
+  "scripts": {
+    "lint": "echo 'No linter for now'",
+    "test": "echo 'No tests for now'",
+    "build": "yarn build:mainnet",
+    "build:localhost": "NETWORK=localhost ./scripts/build.sh",
+    "build:kovan": "NETWORK=kovan ./scripts/build.sh",
+    "build:rinkeby": "NETWORK=rinkeby ./scripts/build.sh",
+    "build:mainnet": "NETWORK=mainnet ./scripts/build.sh",
+    "deploy:localhost": "NETWORK=localhost ./scripts/deploy.sh",
+    "deploy:kovan": "NETWORK=kovan ./scripts/deploy.sh",
+    "deploy:rinkeby": "NETWORK=rinkeby ./scripts/deploy.sh",
+    "deploy:mainnet": "NETWORK=mainnet ./scripts/deploy.sh"
+  },
+  "devDependencies": {
+    "@graphprotocol/graph-cli": "^0.20.1",
+    "@graphprotocol/graph-ts": "^0.20.0"
+  }
+}

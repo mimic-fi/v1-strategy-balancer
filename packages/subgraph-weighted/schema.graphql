@@ -1,0 +1,27 @@
+type Factory @entity {
+  id: ID!
+  address: String!
+  strategies: [Strategy!]!
+}
+
+type Strategy @entity {
+  id: ID!
+  factory: Factory!
+  vault: String!
+  token: String!
+  metadata: String!
+  deposited: BigInt!
+  shares: BigInt!
+  lastRate: Rate
+  rates: [Rate!] @derivedFrom(field: "strategy")
+}
+
+type Rate @entity {
+  id: ID!
+  feeRate: BigInt!
+  liquidityMiningRate: BigInt!
+  shares: BigInt!
+  block: BigInt!
+  timestamp: BigInt!
+  strategy: Strategy!
+}
