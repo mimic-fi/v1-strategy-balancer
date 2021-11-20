@@ -40,10 +40,12 @@ templates:
       abis:
         - name: BalancerStrategy
           file: ./abi/BalancerStrategy.json
+        - name: BalancerStableStrategyFactory
+          file: ./abi/BalancerStableStrategyFactory.json
         - name: BalancerPool
           file: ./abi/BalancerPool.json
         - name: ERC20
           file: ./abi/IERC20.json
       blockHandlers:
         - handler: handleBlock
-      file: ./src/BalancerStrategy.ts
+      file: ./src/StableBalancerStrategy.ts
