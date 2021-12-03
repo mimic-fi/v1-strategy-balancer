@@ -111,6 +111,12 @@ abstract contract BalancerStrategy is IStrategy {
         return _tokenIndex;
     }
 
+    function getTokenBalance() external view override returns (uint256) {
+        uint256 bptTokenBalance = IERC20(_poolAddress).balanceOf(address(this));
+        uint256 price = getBptPerTokenPrice();
+        return FixedPoint.mul(bptTokenBalance, price);
+    }
+
     function getBptPerTokenPrice() public view virtual returns (uint256);
 
     function onJoin(uint256 amount, bytes memory) external override onlyVault returns (uint256 shares) {
