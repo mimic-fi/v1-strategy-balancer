@@ -113,11 +113,11 @@ abstract contract BalancerStrategy is IStrategy {
 
     function getTokenBalance() external view override returns (uint256) {
         uint256 bptTokenBalance = IERC20(_poolAddress).balanceOf(address(this));
-        uint256 price = getBptPerTokenPrice();
+        uint256 price = getTokenPerBptPrice();
         return FixedPoint.mul(bptTokenBalance, price);
     }
 
-    function getBptPerTokenPrice() public view virtual returns (uint256);
+    function getTokenPerBptPrice() public view virtual returns (uint256);
 
     function onJoin(uint256 amount, bytes memory) external override onlyVault returns (uint256 shares) {
         IERC20 token = _token;
@@ -256,9 +256,9 @@ abstract contract BalancerStrategy is IStrategy {
     {
         uint256 price;
         if (address(tokenIn) == _poolAddress) {
-            price = getBptPerTokenPrice();
+            price = getTokenPerBptPrice();
         } else if (address(tokenOut) == _poolAddress) {
-            price = FixedPoint.div(FixedPoint.ONE, getBptPerTokenPrice());
+            price = FixedPoint.div(FixedPoint.ONE, getTokenPerBptPrice());
         } else {
             price = IPriceOracle(_vault.priceOracle()).getTokenPrice(address(tokenOut), address(tokenIn));
         }

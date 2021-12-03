@@ -35,7 +35,7 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getBptPerTokenPrice() public view override returns (uint256) {
+    function getTokenPerBptPrice() public view override returns (uint256) {
         (IERC20[] memory tokens, , ) = _balancerVault.getPoolTokens(_poolId);
 
         IWeightedPool weightedPool = IWeightedPool(_poolAddress);
