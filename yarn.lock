@@ -559,13 +559,13 @@
   resolved "https://registry.yarnpkg.com/@humanwhocodes/object-schema/-/object-schema-1.2.1.tgz#b520529ec21d8e5945a1851dfd1c32e94e39ff45"
   integrity sha512-ZnQMnLV4e7hDlUvw8H+U8ASL02SS2Gn6+9Ac3wGGLIe7+je2AeAOxPY+izIPJDfFDb7eDjev0Us8MO1iFRN8hA==
 
-"@mimic-fi/v1-chainlink-price-oracle@^0.0.2":
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-chainlink-price-oracle/-/v1-chainlink-price-oracle-0.0.2.tgz#f7da58f42703be435aacfda0dcdf4d8d4fd920f9"
-  integrity sha512-HMiM5SrAW0eFP22dDJ3X5YFESo8z6nQ4WKg47Xr+9QdwfCzvPvcGH8QJOvHHmpGcMYyywMewEpzngS3ha7i6nA==
+"@mimic-fi/v1-chainlink-price-oracle@0.0.4":
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-chainlink-price-oracle/-/v1-chainlink-price-oracle-0.0.4.tgz#1282223d5872ded018fa9549a594ddea2b0c306e"
+  integrity sha512-XJi/aQXrfACgs5wfW5IG/a+VH84INCxAFVvBYho5U77dXzHDI5okgrJ59OyFn8p8ssr6gpyvXXh0JDGuvp1Z2A==
   dependencies:
     "@chainlink/contracts" "^0.2.1"
-    "@mimic-fi/v1-vault" "0.0.4"
+    "@mimic-fi/v1-vault" "0.0.6"
     "@openzeppelin/contracts" "^4.1.0"
 
 "@mimic-fi/v1-helpers@^0.0.4":
