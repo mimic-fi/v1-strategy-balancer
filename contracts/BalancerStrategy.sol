@@ -72,6 +72,7 @@ abstract contract BalancerStrategy is IStrategy {
         _poolId = poolId;
         _slippage = slippage;
         _metadataURI = metadata;
+        emit SetMetadataURI(metadata);
 
         _setTokens(balancerVault, poolId);
         _tokenScale = _getTokenScale(token);
