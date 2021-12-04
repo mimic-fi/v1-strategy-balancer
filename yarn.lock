@@ -577,22 +577,15 @@
     decimal.js "^10.3.1"
     ethers "^5.0.8"
 
-"@mimic-fi/v1-uniswap-connector@^0.0.2":
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-uniswap-connector/-/v1-uniswap-connector-0.0.2.tgz#ca0731c2e1c7c27484a62dcb055c38c9b1e9ab47"
-  integrity sha512-T8fcpma4iYa1X4mdnHgESVU0CsLj7nnf6QD06nPnEda0Nxmx5+zMac65mWVkwn5D+4T71q4WD+r0X9GQE58OHQ==
+"@mimic-fi/v1-uniswap-connector@0.0.4":
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-uniswap-connector/-/v1-uniswap-connector-0.0.4.tgz#e242cde1246656d7d7ce76bd1c09b413b412fdb4"
+  integrity sha512-7WBV5+C1pecUL2nA/5gCqGxlO2EKZvHVFNc7cHvJKSKiwz3H0GSWw50u0tHaNy3lpWgmOw/tUBd92ihx1DKmAg==
   dependencies:
-    "@mimic-fi/v1-vault" "0.0.4"
+    "@mimic-fi/v1-vault" "0.0.6"
     "@openzeppelin/contracts" "^4.1.0"
     "@uniswap/v2-core" "^1.0.1"
     "@uniswap/v2-periphery" "^1.1.0-beta.0"
-
-"@mimic-fi/v1-vault@0.0.4":
-  version "0.0.4"
-  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-vault/-/v1-vault-0.0.4.tgz#f5da8ae144979d3fc4ff500f1c1b9c06e1f14dfa"
-  integrity sha512-u+VjOWAaIBxUMKYcI9HxEZRRncedjZccl/Fb+kfqoDO6vFGJ7DheS3a24IjHtV+7l2T/V2RMsoQyD609+Z/QhQ==
-  dependencies:
-    "@openzeppelin/contracts" "^4.1.0"
 
 "@mimic-fi/v1-vault@0.0.6":
   version "0.0.6"
