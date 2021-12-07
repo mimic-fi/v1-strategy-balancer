@@ -20,6 +20,7 @@ import '@mimic-fi/v1-vault/contracts/interfaces/IPriceOracle.sol';
 import '@mimic-fi/v1-vault/contracts/interfaces/IVault.sol';
 import '@mimic-fi/v1-vault/contracts/libraries/FixedPoint.sol';
 
+import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
@@ -27,7 +28,7 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 import './balancer/IBalancerVault.sol';
 
-abstract contract BalancerStrategy is IStrategy {
+abstract contract BalancerStrategy is IStrategy, Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -62,7 +63,7 @@ abstract contract BalancerStrategy is IStrategy {
         IBalancerVault balancerVault,
         bytes32 poolId,
         uint256 slippage,
-        string memory metadata
+        string memory metadataURI
     ) {
         require(slippage <= _MAX_SLIPPAGE, 'SWAP_MAX_SLIPPAGE');
 
@@ -71,8 +72,8 @@ abstract contract BalancerStrategy is IStrategy {
         _balancerVault = balancerVault;
         _poolId = poolId;
         _slippage = slippage;
-        _metadataURI = metadata;
-        emit SetMetadataURI(metadata);
+
+        _setMetadataURI(metadataURI);
 
         _setTokens(balancerVault, poolId);
         _tokenScale = _getTokenScale(token);
@@ -295,5 +296,16 @@ abstract contract BalancerStrategy is IStrategy {
         for (uint256 i = 0; i < tokens.length; i++) tokens[i] = _tokens[i];
         amounts = new uint256[](tokens.length);
         amounts[index] = amount;
+    }
+
+    function setMetadataURI(string memory metadataURI) external onlyOwner {
+        _setMetadataURI(metadataURI);
+    }
+
+    //Private
+
+    function _setMetadataURI(string memory metadataURI) private {
+        _metadataURI = metadataURI;
+        emit SetMetadataURI(metadataURI);
     }
 }

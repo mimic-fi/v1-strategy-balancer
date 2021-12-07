@@ -54,4 +54,9 @@ describe('BalancerWeightedStrategy - Deploy', function () {
     expect(await strategy.getMetadataURI()).to.be.equal('metadata:uri')
     expect(await strategy.getTotalShares()).to.be.equal(0)
   })
+
+  it('set metadataUri', async () => {
+    await strategy.setMetadataURI('metadata:uri:2.0')
+    expect(await strategy.getMetadataURI()).to.be.equal('metadata:uri:2.0')
+  })
 })
