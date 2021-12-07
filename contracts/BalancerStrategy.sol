@@ -72,7 +72,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         _balancerVault = balancerVault;
         _poolId = poolId;
         _slippage = slippage;
-        
+
         _setMetadataURI(metadataURI);
 
         _setTokens(balancerVault, poolId);
