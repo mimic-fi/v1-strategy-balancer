@@ -3,13 +3,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from 'chai'
 import { Contract } from 'ethers'
 
-describe('BalancerWeightedStrategy - Deploy', function () {
-  let owner: SignerWithAddress, vault: Contract, strategy: Contract, dai: Contract
+describe.only('BalancerWeightedStrategy - Deploy', function () {
+  let owner: SignerWithAddress, vault: Contract, strategy: Contract, wbtc: Contract
 
   const BALANCER_VAULT = '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
   // eslint-disable-next-line no-secrets/no-secrets
-  const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
-  const POOL_ID = '0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a'
+  const WBTC = '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599'
+  const POOL_ID = '0xa6f548df93de924d73be7d25dc02554c6bd66db500020000000000000000000e'
 
   before('load signers', async () => {
     owner = await getSigner()
@@ -19,7 +19,7 @@ describe('BalancerWeightedStrategy - Deploy', function () {
   before('deploy vault', async () => {
     const maxSlippage = fp(0.02)
     const protocolFee = fp(0.00003)
-    const priceOracle = owner.address // random address
+    const priceOracle = '0x8d2185c92f567b6a6e41b691953f12269c259971'
     const swapConnector = owner.address // random address
     const whitelistedTokens: string[] = []
     const whitelistedStrategies: string[] = []
@@ -35,14 +35,14 @@ describe('BalancerWeightedStrategy - Deploy', function () {
   })
 
   before('load tokens', async () => {
-    dai = await instanceAt('IERC20', DAI)
+    wbtc = await instanceAt('IERC20', WBTC)
   })
 
   it('deploy strategy', async () => {
     const slippage = fp(0.01)
     strategy = await deploy('BalancerWeightedStrategy', [
       vault.address,
-      dai.address,
+      wbtc.address,
       BALANCER_VAULT,
       POOL_ID,
       slippage,
@@ -50,7 +50,7 @@ describe('BalancerWeightedStrategy - Deploy', function () {
     ])
 
     expect(await strategy.getVault()).to.be.equal(vault.address)
-    expect(await strategy.getToken()).to.be.equal(dai.address)
+    expect(await strategy.getToken()).to.be.equal(wbtc.address)
     expect(await strategy.getMetadataURI()).to.be.equal('metadata:uri')
     expect(await strategy.getTotalShares()).to.be.equal(0)
   })
