@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from 'chai'
 import { Contract } from 'ethers'
 
-describe.only('BalancerWeightedStrategy - Deploy', function () {
+describe('BalancerWeightedStrategy - Deploy', function () {
   let owner: SignerWithAddress, vault: Contract, strategy: Contract, wbtc: Contract
 
   const BALANCER_VAULT = '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
