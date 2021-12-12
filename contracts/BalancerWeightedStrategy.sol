@@ -15,6 +15,7 @@
 pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
+import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 
 import './balancer/LogExpMath.sol';
 import './balancer/IWeightedPool.sol';
@@ -41,24 +42,22 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
         IWeightedPool weightedPool = IWeightedPool(_poolAddress);
 
         uint256[] memory weights = weightedPool.getNormalizedWeights();
-
         uint256 invariant = weightedPool.getInvariant();
         uint256 totalSupply = IERC20(_poolAddress).totalSupply();
 
         address priceOracle = _vault.priceOracle();
 
-        uint256 sumPrices;
-        uint256 divisor = FixedPoint.ONE;
+        uint256 mul = FixedPoint.ONE;
 
         for (uint256 i; i < tokens.length; i++) {
             uint256 price = tokens[i] == _token
                 ? FixedPoint.ONE
-                : IPriceOracle(priceOracle).getTokenPrice(address(_token), address(tokens[i])) * _tokenScale;
+                : ((IPriceOracle(priceOracle).getTokenPrice(address(_token), address(tokens[i])) * _tokenScale) /
+                    _getTokenScale(tokens[i]));
 
-            sumPrices = sumPrices.add(pow(price, weights[i]));
-            divisor = divisor.mul(pow(weights[i], weights[i]));
+            mul = mul.mul(pow(price.div(weights[i]), weights[i]));
         }
 
-        return invariant.mul(sumPrices).divUp(totalSupply).divUp(divisor) / _tokenScale;
+        return SafeMath.div(SafeMath.mul(invariant, mul), totalSupply) / _tokenScale;
     }
 }
