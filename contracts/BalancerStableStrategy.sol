@@ -26,15 +26,16 @@ contract BalancerStableStrategy is BalancerStrategy {
         IERC20 token,
         IBalancerVault balancerVault,
         bytes32 poolId,
+        IERC20 enteringToken,
         uint256 slippage,
         string memory metadata
-    ) BalancerStrategy(vault, token, balancerVault, poolId, slippage, metadata) {
+    ) BalancerStrategy(vault, token, balancerVault, poolId, enteringToken, slippage, metadata) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getTokenPerBptPrice() public view override returns (uint256) {
+    function getEnteringTokenPerBptPrice() public view override returns (uint256) {
         IStablePool stablePool = IStablePool(_poolAddress);
         uint256 rate = stablePool.getRate();
-        return rate / _tokenScale;
+        return rate / _enteringTokenScale;
     }
 }
