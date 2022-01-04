@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from 'chai'
 import { BigNumber, Contract } from 'ethers'
 
-describe.only('BalancerWeightedStrategy - USDC - Join', function () {
+describe('BalancerWeightedStrategy - USDC - Join', function () {
   let owner: SignerWithAddress,
     whale: SignerWithAddress,
     whaleWeth: SignerWithAddress,
