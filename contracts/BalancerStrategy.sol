@@ -328,6 +328,13 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         _setMetadataURI(metadataURI);
     }
 
+    function withdrawAirdrop(IERC20 investingToken, address recipient) external onlyOwner {
+        if (investingToken != _token && address(investingToken) != _poolAddress) {
+            uint256 balance = investingToken.balanceOf(address(this));
+            investingToken.transfer(recipient, balance);
+        }
+    }
+
     //Private
 
     function _setMetadataURI(string memory metadataURI) private {
