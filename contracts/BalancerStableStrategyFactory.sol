@@ -32,6 +32,7 @@ contract BalancerStableStrategyFactory {
         returns (BalancerStableStrategy strategy)
     {
         strategy = new BalancerStableStrategy(vault, token, balancerVault, poolId, enteringToken, slippage, metadata);
+        strategy.transferOwnership(msg.sender);
         emit StrategyCreated(strategy);
     }
 }
