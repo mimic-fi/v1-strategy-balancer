@@ -119,7 +119,6 @@ describe('BalancerStableStrategy - USDC - Join', function () {
       usdc.address,
       bVault.address,
       POOL_DAI_USDC_USDT_ID,
-      usdc.address,
       slippage,
       'metadata:uri',
     ])

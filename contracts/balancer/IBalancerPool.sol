@@ -14,6 +14,6 @@
 
 pragma solidity ^0.8.0;
 
-interface IStablePool {
+interface IBalancerPool {
     function getRate() external view returns (uint256);
 }

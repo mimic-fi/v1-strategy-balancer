@@ -27,11 +27,11 @@ contract BalancerWeightedStrategyFactory {
         balancerVault = _balancerVault;
     }
 
-    function create(IERC20 token, bytes32 poolId, IERC20 enteringToken, uint256 slippage, string memory metadata)
+    function create(IERC20 token, bytes32 poolId, uint256 slippage, string memory metadata)
         external
         returns (BalancerWeightedStrategy strategy)
     {
-        strategy = new BalancerWeightedStrategy(vault, token, balancerVault, poolId, enteringToken, slippage, metadata);
+        strategy = new BalancerWeightedStrategy(vault, token, balancerVault, poolId, slippage, metadata);
         emit StrategyCreated(strategy);
     }
 }

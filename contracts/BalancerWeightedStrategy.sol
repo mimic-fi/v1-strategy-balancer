@@ -30,14 +30,13 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
         IERC20 token,
         IBalancerVault balancerVault,
         bytes32 poolId,
-        IERC20 enteringToken,
         uint256 slippage,
         string memory metadata
-    ) BalancerStrategy(vault, token, balancerVault, poolId, enteringToken, slippage, metadata) {
+    ) BalancerStrategy(vault, token, balancerVault, poolId, slippage, metadata) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getEnteringTokenPerBptPrice() public view override returns (uint256) {
+    function getTokenPerBptPrice() public view override returns (uint256) {
         (IERC20[] memory tokens, , ) = _balancerVault.getPoolTokens(_poolId);
 
         IWeightedPool weightedPool = IWeightedPool(_poolAddress);
@@ -51,14 +50,14 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
         uint256 mul = FixedPoint.ONE;
 
         for (uint256 i; i < tokens.length; i++) {
-            uint256 price = tokens[i] == _enteringToken
+            uint256 price = tokens[i] == _token
                 ? FixedPoint.ONE
-                : ((IPriceOracle(priceOracle).getTokenPrice(address(_enteringToken), address(tokens[i])) *
-                    _enteringTokenScale) / _getTokenScale(tokens[i]));
+                : ((IPriceOracle(priceOracle).getTokenPrice(address(_token), address(tokens[i])) * _tokenScale) /
+                    _getTokenScale(tokens[i]));
 
-            mul = mul.mul(pow(price.div(weights[i]), weights[i]));
+            mul = mul.mulDown(pow(price.divDown(weights[i]), weights[i]));
         }
 
-        return SafeMath.div(SafeMath.mul(invariant, mul), totalSupply) / _enteringTokenScale;
+        return SafeMath.div(SafeMath.mul(invariant, mul), totalSupply) / _tokenScale;
     }
 }

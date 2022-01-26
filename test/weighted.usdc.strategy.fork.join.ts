@@ -109,10 +109,9 @@ describe('BalancerWeightedStrategy - USDC - Join', function () {
     const slippage = fp(0.01)
     strategy = await deploy('BalancerWeightedStrategy', [
       vault.address,
-      usdc.address,
+      weth.address,
       bVault.address,
       POOL_WBTC_WETH_ID,
-      weth.address,
       slippage,
       'metadata:uri',
     ])

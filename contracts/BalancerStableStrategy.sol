@@ -16,7 +16,7 @@ pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 
-import './balancer/IStablePool.sol';
+import './balancer/IBalancerPool.sol';
 
 import './BalancerStrategy.sol';
 
@@ -26,16 +26,15 @@ contract BalancerStableStrategy is BalancerStrategy {
         IERC20 token,
         IBalancerVault balancerVault,
         bytes32 poolId,
-        IERC20 enteringToken,
         uint256 slippage,
         string memory metadata
-    ) BalancerStrategy(vault, token, balancerVault, poolId, enteringToken, slippage, metadata) {
+    ) BalancerStrategy(vault, token, balancerVault, poolId, slippage, metadata) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getEnteringTokenPerBptPrice() public view override returns (uint256) {
-        IStablePool stablePool = IStablePool(_poolAddress);
+    function getTokenPerBptPrice() public view override returns (uint256) {
+        IBalancerPool stablePool = IBalancerPool(_poolAddress);
         uint256 rate = stablePool.getRate();
-        return rate / _enteringTokenScale;
+        return rate / _tokenScale;
     }
 }
