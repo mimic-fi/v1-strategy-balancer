@@ -87,8 +87,15 @@ describe('BalancerWeightedStrategy - USDC - Join', function () {
     const priceOracleTokens: string[] = [DAI, USDC, USDT]
     const priceOracleFeeds: string[] = [CHAINLINK_ORACLE_DAI_ETH, CHAINLINK_ORACLE_USDC_ETH, CHAINLINK_ORACLE_USDT_ETH]
 
-    const priceOracle = await deploy('ChainLinkPriceOracle', [priceOracleTokens, priceOracleFeeds])
-    const swapConnector = await deploy('UniswapConnector', [UNISWAP_V2_ROUTER_ADDRESS])
+    const priceOracle = await deploy(
+      '@mimic-fi/v1-chainlink-price-oracle/artifacts/contracts/ChainLinkPriceOracle.sol/ChainLinkPriceOracle',
+      [priceOracleTokens, priceOracleFeeds]
+    )
+
+    const swapConnector = await deploy(
+      '@mimic-fi/v1-uniswap-connector/artifacts/contracts/UniswapConnector.sol/UniswapConnector',
+      [UNISWAP_V2_ROUTER_ADDRESS]
+    )
 
     vault = await deploy('@mimic-fi/v1-vault/artifacts/contracts/Vault.sol/Vault', [
       maxSlippage,
