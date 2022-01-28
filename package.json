@@ -18,7 +18,7 @@
     "@mimic-fi/v1-chainlink-price-oracle": "0.0.4",
     "@mimic-fi/v1-uniswap-connector": "0.0.4",
     "@mimic-fi/v1-vault": "0.0.6",
-    "@openzeppelin/contracts": "^4.1.0"
+    "@openzeppelin/contracts": "4.1.0"
   },
   "devDependencies": {
     "@mimic-fi/v1-helpers": "^0.0.4",
