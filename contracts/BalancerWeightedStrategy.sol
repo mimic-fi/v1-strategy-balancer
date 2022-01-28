@@ -37,27 +37,24 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
     }
 
     function getTokenPerBptPrice() public view override returns (uint256) {
+        IPriceOracle priceOracle = IPriceOracle(_vault.priceOracle());
+        IWeightedPool weightedPool = IWeightedPool(_poolAddress);
+        uint256[] memory weights = weightedPool.getNormalizedWeights();
         (IERC20[] memory tokens, , ) = _balancerVault.getPoolTokens(_poolId);
 
-        IWeightedPool weightedPool = IWeightedPool(_poolAddress);
-
-        uint256[] memory weights = weightedPool.getNormalizedWeights();
-        uint256 invariant = weightedPool.getInvariant();
-        uint256 totalSupply = IERC20(_poolAddress).totalSupply();
-
-        address priceOracle = _vault.priceOracle();
-
         uint256 mul = FixedPoint.ONE;
-
         for (uint256 i; i < tokens.length; i++) {
-            uint256 price = tokens[i] == _token
+            IERC20 token = tokens[i];
+            uint256 weight = weights[i];
+            uint256 price = token == _token
                 ? FixedPoint.ONE
-                : ((IPriceOracle(priceOracle).getTokenPrice(address(_token), address(tokens[i])) * _tokenScale) /
-                    _getTokenScale(tokens[i]));
+                : ((priceOracle.getTokenPrice(address(_token), address(token)) * _tokenScale) / _getTokenScale(token));
 
-            mul = mul.mulDown(pow(price.divDown(weights[i]), weights[i]));
+            mul = mul.mulDown(pow(price.divDown(weight), weight));
         }
 
+        uint256 invariant = weightedPool.getInvariant();
+        uint256 totalSupply = IERC20(_poolAddress).totalSupply();
         return SafeMath.div(SafeMath.mul(invariant, mul), totalSupply) / _tokenScale;
     }
 }

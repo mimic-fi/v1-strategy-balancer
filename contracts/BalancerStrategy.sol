@@ -22,9 +22,9 @@ import '@mimic-fi/v1-vault/contracts/libraries/FixedPoint.sol';
 
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 import './balancer/IBalancerVault.sol';
 import './balancer/IBalancerPool.sol';
@@ -33,8 +33,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
-    uint256 private constant _MAX_SLIPPAGE = 1e18; // 100%
-
+    uint256 private constant VAULT_EXIT_RATIO_PRECISION = 1e18;
     uint256 private constant JOIN_WEIGHTED_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT = 1;
     uint256 private constant EXIT_WEIGHTED_POOL_EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0;
 
@@ -66,7 +65,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         uint256 slippage,
         string memory metadataURI
     ) {
-        require(slippage <= _MAX_SLIPPAGE, 'SWAP_MAX_SLIPPAGE');
+        require(slippage <= FixedPoint.ONE, 'SWAP_SLIPPAGE_ABOVE_1');
 
         _vault = vault;
         _token = token;
@@ -75,7 +74,6 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         _slippage = slippage;
 
         _setMetadataURI(metadataURI);
-
         _setTokens(balancerVault, poolId);
 
         _tokenIndex = _getTokenIndex(token);
@@ -112,18 +110,25 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         return _tokenIndex;
     }
 
-    function getTokenPerBptPrice() public view virtual returns (uint256);
-
     function getValueRate() external view override returns (uint256) {
-        uint256 tokenPrice = getTokenPerBptPrice();
-        uint256 bptRate = IBalancerPool(_poolAddress).getRate();
-        return tokenPrice.divUp(bptRate);
+        return getTokenPerBptPrice().divUp(_getBptRate());
     }
 
     function getTotalValue() external view override returns (uint256) {
-        uint256 bptBalance = IERC20(_poolAddress).balanceOf(address(this));
-        uint256 bptRate = IBalancerPool(_poolAddress).getRate();
-        return bptBalance.mulDown(bptRate);
+        return _getBptBalance().mulDown(_getBptRate());
+    }
+
+    function getTokenPerBptPrice() public view virtual returns (uint256);
+
+    function setMetadataURI(string memory metadataURI) external onlyOwner {
+        _setMetadataURI(metadataURI);
+    }
+
+    function withdraw(IERC20 token, address recipient) external onlyOwner {
+        if (token != _token && address(token) != _poolAddress) {
+            uint256 balance = token.balanceOf(address(this));
+            token.transfer(recipient, balance);
+        }
     }
 
     function onJoin(uint256 amount, bytes memory)
@@ -132,21 +137,21 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         onlyVault
         returns (uint256 value, uint256 totalValue)
     {
-        IERC20 token = _token;
-        uint256 initialTokenBalance = token.balanceOf(address(this));
-        uint256 initialBPTBalance = IERC20(_poolAddress).balanceOf(address(this));
+        uint256 initialTokenBalance = _token.balanceOf(address(this));
+        uint256 initialBptBalance = _getBptBalance();
 
-        invest(token);
+        invest(_token);
 
-        uint256 finalBPTBalance = IERC20(_poolAddress).balanceOf(address(this));
-        uint256 callerBPTAmount = SafeMath.div(
-            SafeMath.mul(amount, finalBPTBalance.sub(initialBPTBalance)),
+        uint256 finalBptBalance = _getBptBalance();
+        // Handle any potential airdrop that does not correspond to the joining user
+        uint256 callerBptAmount = SafeMath.div(
+            SafeMath.mul(amount, finalBptBalance.sub(initialBptBalance)),
             initialTokenBalance
         );
 
-        uint256 bptRate = IBalancerPool(_poolAddress).getRate();
-        totalValue = finalBPTBalance.mulDown(bptRate);
-        value = callerBPTAmount.mulDown(bptRate);
+        uint256 bptRate = _getBptRate();
+        value = callerBptAmount.mulDown(bptRate);
+        totalValue = finalBptBalance.mulDown(bptRate);
     }
 
     function onExit(uint256 ratio, bool emergency, bytes memory data)
@@ -155,72 +160,55 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         onlyVault
         returns (address token, uint256 amount, uint256 value, uint256 totalValue)
     {
-        token = address(_token);
-        uint256 tokenAmount;
-        uint256 slippage;
+        // Invests before exiting only if it is a normal exit
         if (!emergency) {
-            // Invests before exiting and exit with standard slippage
-            invest(IERC20(token));
-            slippage = getSlippage();
-        } else {
-            // Do not invest to avoid any potential errors and exit with custom slippage
-            slippage = abi.decode(data, (uint256));
+            invest(_token);
         }
 
-        uint256 finalBPTBalance;
-        uint256 callerBPTAmount;
-        (, tokenAmount, callerBPTAmount, finalBPTBalance) = _exit(ratio, slippage);
+        // Use custom slippage if an emergency exit was requested
+        uint256 slippage = emergency ? abi.decode(data, (uint256)) : getSlippage();
+        (uint256 tokenAmount, uint256 bptAmount, uint256 bptBalance) = _exitBalancer(ratio, slippage);
+        _token.approve(address(_vault), tokenAmount);
 
-        uint256 bptRate = IBalancerPool(_poolAddress).getRate();
-        totalValue = finalBPTBalance.mulDown(bptRate);
-        value = callerBPTAmount.mulDown(bptRate);
-
-        IERC20(token).approve(address(_vault), tokenAmount);
-
-        return (token, tokenAmount, value, totalValue);
+        uint256 bptRate = _getBptRate();
+        value = bptAmount.mulDown(bptRate);
+        totalValue = bptBalance.mulDown(bptRate);
+        return (address(_token), tokenAmount, value, totalValue);
     }
 
-    function invest(IERC20 investingToken) public {
-        require(address(investingToken) != address(_poolAddress), 'BALANCER_INTERNAL_TOKEN');
+    function invest(IERC20 token) public {
+        require(address(token) != address(_poolAddress), 'BALANCER_INTERNAL_TOKEN');
 
-        uint256 tokenBalance = investingToken.balanceOf(address(this));
-
-        IERC20 token = _token;
-        if (investingToken != token) {
-            if (tokenBalance > 0) {
-                _swap(investingToken, token, tokenBalance, getSlippage());
+        uint256 balance = token.balanceOf(address(this));
+        if (balance > 0) {
+            if (token != _token) {
+                _swap(token, _token, balance, getSlippage());
             }
-            tokenBalance = token.balanceOf(address(this));
-        }
-
-        if (tokenBalance > 0) {
-            _join(tokenBalance);
+            _joinBalancer(_token.balanceOf(address(this)));
         }
     }
 
-    function _join(uint256 amount) internal {
-        IERC20 token = _token;
-        uint256 minimumBPT = _getMinAmountOut(token, IERC20(_poolAddress), amount, getSlippage());
+    function _joinBalancer(uint256 amount) internal {
+        uint256 minimumBpt = _getMinAmountOut(_token, IERC20(_poolAddress), amount, getSlippage());
         (IERC20[] memory tokens, uint256[] memory amountsIn) = _buildBalancerTokensParams(_tokenIndex, amount);
 
         IBalancerVault.JoinPoolRequest memory request = IBalancerVault.JoinPoolRequest({
             assets: tokens,
             maxAmountsIn: amountsIn,
-            userData: abi.encode(JOIN_WEIGHTED_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minimumBPT),
+            userData: abi.encode(JOIN_WEIGHTED_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minimumBpt),
             fromInternalBalance: false
         });
 
-        token.approve(address(_balancerVault), amount);
+        _token.approve(address(_balancerVault), amount);
         _balancerVault.joinPool(_poolId, address(this), address(this), request);
     }
 
-    function _exit(uint256 ratio, uint256 slippage) internal returns (address, uint256, uint256, uint256) {
-        IERC20 token = _token;
-
-        uint256 initialBPTBalance = IERC20(_poolAddress).balanceOf(address(this));
-        uint256 bptAmount = SafeMath.div(initialBPTBalance.mulDown(ratio), FixedPoint.ONE);
-
-        uint256 minAmount = _getMinAmountOut(IERC20(_poolAddress), token, bptAmount, slippage);
+    function _exitBalancer(uint256 ratio, uint256 slippage)
+        internal
+        returns (uint256 tokenBalance, uint256 bptAmount, uint256 bptBalance)
+    {
+        bptAmount = SafeMath.div(_getBptBalance().mulDown(ratio), VAULT_EXIT_RATIO_PRECISION);
+        uint256 minAmount = _getMinAmountOut(IERC20(_poolAddress), _token, bptAmount, slippage);
         (IERC20[] memory tokens, uint256[] memory minAmountsOut) = _buildBalancerTokensParams(_tokenIndex, minAmount);
 
         IBalancerVault.ExitPoolRequest memory request = IBalancerVault.ExitPoolRequest({
@@ -232,10 +220,8 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
 
         _balancerVault.exitPool(_poolId, address(this), payable(address(this)), request);
 
-        uint256 tokenBalance = token.balanceOf(address(this));
-        uint256 finalBPTBalance = IERC20(_poolAddress).balanceOf(address(this));
-
-        return (address(token), tokenBalance, bptAmount, finalBPTBalance);
+        tokenBalance = _token.balanceOf(address(this));
+        bptBalance = _getBptBalance();
     }
 
     function _swap(IERC20 tokenIn, IERC20 tokenOut, uint256 amountIn, uint256 slippage) internal returns (uint256) {
@@ -266,7 +252,6 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         require(postBalanceIn >= preBalanceIn.add(remainingIn), 'SWAP_INVALID_REMAINING_IN');
         uint256 postBalanceOut = tokenOut.balanceOf(address(this));
         require(postBalanceOut >= preBalanceOut.add(amountOut), 'SWAP_INVALID_AMOUNT_OUT');
-
         return amountOut;
     }
 
@@ -287,6 +272,14 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         minAmountOut = amountIn.mulUp(price).mulUp(FixedPoint.ONE - slippage);
     }
 
+    function _getBptRate() internal view returns (uint256) {
+        return IBalancerPool(_poolAddress).getRate();
+    }
+
+    function _getBptBalance() internal view returns (uint256) {
+        return IERC20(_poolAddress).balanceOf(address(this));
+    }
+
     function _getTokenScale(IERC20 token) internal view returns (uint256) {
         uint256 decimals = IERC20Metadata(address(token)).decimals();
         require(decimals <= 18, 'TOKEN_WORKS_WITH_BIGGER_DECIMALS');
@@ -300,12 +293,6 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         revert('TOKEN_DOES_NOT_BELONG_TO_POOL');
     }
 
-    function _setTokens(IBalancerVault vault, bytes32 poolId) internal {
-        (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
-        _tokens = new IERC20[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) _tokens[i] = tokens[i];
-    }
-
     function _buildBalancerTokensParams(uint256 index, uint256 amount)
         internal
         view
@@ -317,21 +304,14 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         amounts[index] = amount;
     }
 
-    function setMetadataURI(string memory metadataURI) external onlyOwner {
-        _setMetadataURI(metadataURI);
-    }
-
-    function withdrawAirdrop(IERC20 investingToken, address recipient) external onlyOwner {
-        if (investingToken != _token && address(investingToken) != _poolAddress) {
-            uint256 balance = investingToken.balanceOf(address(this));
-            investingToken.transfer(recipient, balance);
-        }
-    }
-
-    //Private
-
     function _setMetadataURI(string memory metadataURI) private {
         _metadataURI = metadataURI;
         emit SetMetadataURI(metadataURI);
+    }
+
+    function _setTokens(IBalancerVault vault, bytes32 poolId) private {
+        (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
+        _tokens = new IERC20[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) _tokens[i] = tokens[i];
     }
 }
