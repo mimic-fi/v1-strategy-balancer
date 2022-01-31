@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from 'chai'
 import { BigNumber, Contract } from 'ethers'
 
-describe('BalancerWeightedStrategy - USDC - Join', function () {
+describe('BalancerWeightedStrategy - ETH - Join', function () {
   let owner: SignerWithAddress,
     whale: SignerWithAddress,
     trader: SignerWithAddress,
@@ -76,8 +76,14 @@ describe('BalancerWeightedStrategy - USDC - Join', function () {
     const priceOracleTokens: string[] = [WBTC, WETH]
     const priceOracleFeeds: string[] = [CHAINLINK_ORACLE_WBTC_ETH, PRICE_ONE_ORACLE]
 
-    const priceOracle = await deploy('ChainLinkPriceOracle', [priceOracleTokens, priceOracleFeeds])
-    const swapConnector = await deploy('UniswapConnector', [UNISWAP_V2_ROUTER_ADDRESS])
+    const priceOracle = await deploy(
+      '@mimic-fi/v1-chainlink-price-oracle/artifacts/contracts/ChainLinkPriceOracle.sol/ChainLinkPriceOracle',
+      [priceOracleTokens, priceOracleFeeds]
+    )
+    const swapConnector = await deploy(
+      '@mimic-fi/v1-uniswap-connector/artifacts/contracts/UniswapConnector.sol/UniswapConnector',
+      [UNISWAP_V2_ROUTER_ADDRESS]
+    )
 
     vault = await deploy('@mimic-fi/v1-vault/artifacts/contracts/Vault.sol/Vault', [
       maxSlippage,
