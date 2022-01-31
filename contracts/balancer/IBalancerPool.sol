@@ -14,10 +14,8 @@
 
 pragma solidity ^0.8.0;
 
-import '@mimic-fi/v1-vault/contracts/Vault.sol';
-import '@mimic-fi/v1-uniswap-connector/contracts/UniswapConnector.sol';
-import '@mimic-fi/v1-chainlink-price-oracle/contracts/ChainLinkPriceOracle.sol';
+interface IBalancerPool {
+    function getRate() external view returns (uint256);
 
-contract Imports {
-    // solhint-disable-previous-line no-empty-blocks
+    function balanceOf(address account) external view returns (uint256);
 }

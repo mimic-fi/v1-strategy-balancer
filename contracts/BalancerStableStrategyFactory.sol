@@ -27,11 +27,11 @@ contract BalancerStableStrategyFactory {
         balancerVault = _balancerVault;
     }
 
-    function create(IERC20 token, bytes32 poolId, IERC20 enteringToken, uint256 slippage, string memory metadata)
+    function create(IERC20 token, bytes32 poolId, uint256 slippage, string memory metadata)
         external
         returns (BalancerStableStrategy strategy)
     {
-        strategy = new BalancerStableStrategy(vault, token, balancerVault, poolId, enteringToken, slippage, metadata);
+        strategy = new BalancerStableStrategy(vault, token, balancerVault, poolId, slippage, metadata);
         strategy.transferOwnership(msg.sender);
         emit StrategyCreated(strategy);
     }

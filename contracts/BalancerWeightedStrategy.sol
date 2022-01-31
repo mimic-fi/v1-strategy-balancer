@@ -30,35 +30,31 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
         IERC20 token,
         IBalancerVault balancerVault,
         bytes32 poolId,
-        IERC20 enteringToken,
         uint256 slippage,
         string memory metadata
-    ) BalancerStrategy(vault, token, balancerVault, poolId, enteringToken, slippage, metadata) {
+    ) BalancerStrategy(vault, token, balancerVault, poolId, slippage, metadata) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getEnteringTokenPerBptPrice() public view override returns (uint256) {
+    function getTokenPerBptPrice() public view override returns (uint256) {
+        IPriceOracle priceOracle = IPriceOracle(_vault.priceOracle());
+        IWeightedPool weightedPool = IWeightedPool(_poolAddress);
+        uint256[] memory weights = weightedPool.getNormalizedWeights();
         (IERC20[] memory tokens, , ) = _balancerVault.getPoolTokens(_poolId);
 
-        IWeightedPool weightedPool = IWeightedPool(_poolAddress);
-
-        uint256[] memory weights = weightedPool.getNormalizedWeights();
-        uint256 invariant = weightedPool.getInvariant();
-        uint256 totalSupply = IERC20(_poolAddress).totalSupply();
-
-        address priceOracle = _vault.priceOracle();
-
         uint256 mul = FixedPoint.ONE;
-
         for (uint256 i; i < tokens.length; i++) {
-            uint256 price = tokens[i] == _enteringToken
+            IERC20 token = tokens[i];
+            uint256 weight = weights[i];
+            uint256 price = token == _token
                 ? FixedPoint.ONE
-                : ((IPriceOracle(priceOracle).getTokenPrice(address(_enteringToken), address(tokens[i])) *
-                    _enteringTokenScale) / _getTokenScale(tokens[i]));
+                : ((priceOracle.getTokenPrice(address(_token), address(token)) * _tokenScale) / _getTokenScale(token));
 
-            mul = mul.mul(pow(price.div(weights[i]), weights[i]));
+            mul = mul.mulDown(pow(price.divDown(weight), weight));
         }
 
-        return SafeMath.div(SafeMath.mul(invariant, mul), totalSupply) / _enteringTokenScale;
+        uint256 invariant = weightedPool.getInvariant();
+        uint256 totalSupply = IERC20(_poolAddress).totalSupply();
+        return SafeMath.div(SafeMath.mul(invariant, mul), totalSupply) / _tokenScale;
     }
 }
