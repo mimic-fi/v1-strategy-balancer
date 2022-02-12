@@ -104,7 +104,7 @@ describe('BalancerWeightedStrategy - ETH - Join', function () {
 
   before('deposit to Vault', async () => {
     await weth.connect(whale).approve(vault.address, fp(100))
-    await vault.connect(whale).deposit(whale.address, weth.address, fp(100))
+    await vault.connect(whale).deposit(whale.address, weth.address, fp(100), '0x')
     await weth.connect(whale).transfer(trader.address, fp(2000))
   })
 

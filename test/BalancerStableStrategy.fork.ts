@@ -116,7 +116,7 @@ describe('BalancerStableStrategy - USDC - Join', function () {
 
   before('deposit to Vault', async () => {
     await usdc.connect(whale).approve(vault.address, toUSDC(100))
-    await vault.connect(whale).deposit(whale.address, usdc.address, toUSDC(100))
+    await vault.connect(whale).deposit(whale.address, usdc.address, toUSDC(100), '0x')
     await usdc.connect(whale).transfer(trader.address, toUSDC(2500000))
   })
 
@@ -219,7 +219,7 @@ describe('BalancerStableStrategy - USDC - Join', function () {
     expectWithError(accountValue, strategyShares.mul(strategyShareValueScaled).div(bn(1e36)))
   })
 
-  it('handle ETH airdrops', async () => {
+  it('handle USDC airdrops', async () => {
     const previousValue = await vault.getAccountCurrentValue(whale.address, strategy.address)
 
     //airdrop 1000

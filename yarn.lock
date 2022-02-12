@@ -587,19 +587,19 @@
     "@uniswap/v2-core" "^1.0.1"
     "@uniswap/v2-periphery" "^1.1.0-beta.0"
 
+"@mimic-fi/v1-vault@0.0.10":
+  version "0.0.10"
+  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-vault/-/v1-vault-0.0.10.tgz#77f47407195f6ba5d85f9fcf4c709928883242e3"
+  integrity sha512-VpKQAEqKDTlgcIkZkOLonmFKuCioD4lR4EPuXcN1kaMGBt6poq03ydqaFRATe55ua6IDdL4/A8qz0uebXIPZsQ==
+  dependencies:
+    "@openzeppelin/contracts" "4.1.0"
+
 "@mimic-fi/v1-vault@0.0.6":
   version "0.0.6"
   resolved "https://registry.yarnpkg.com/@mimic-fi/v1-vault/-/v1-vault-0.0.6.tgz#8cdd3bacc47d450cd35afd417876d6ecd36cad77"
   integrity sha512-qfwHw6HdnNMoI0v1cRGDA/TsdvmlJftzFCzx/NGrFPz4GRG8ivDQI+aGz6OGIl0C7kbzKcO7WQLaO7e91lU8IQ==
   dependencies:
     "@openzeppelin/contracts" "^4.1.0"
-
-"@mimic-fi/v1-vault@0.0.9":
-  version "0.0.9"
-  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-vault/-/v1-vault-0.0.9.tgz#15acf7c6dbeee2f7599ee876c2ca58b9e1ede0e8"
-  integrity sha512-UIfbjD45xQpw0EyWn7tCBAs1Tm0FQjdCVFSunL7wj2xs8icYhPKnp0Hb0Yvusw1YZPKeEg9V1uXWOriSxQY5cw==
-  dependencies:
-    "@openzeppelin/contracts" "4.1.0"
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
