@@ -587,10 +587,10 @@
     "@uniswap/v2-core" "^1.0.1"
     "@uniswap/v2-periphery" "^1.1.0-beta.0"
 
-"@mimic-fi/v1-vault@0.0.10":
-  version "0.0.10"
-  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-vault/-/v1-vault-0.0.10.tgz#77f47407195f6ba5d85f9fcf4c709928883242e3"
-  integrity sha512-VpKQAEqKDTlgcIkZkOLonmFKuCioD4lR4EPuXcN1kaMGBt6poq03ydqaFRATe55ua6IDdL4/A8qz0uebXIPZsQ==
+"@mimic-fi/v1-vault@0.0.11":
+  version "0.0.11"
+  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-vault/-/v1-vault-0.0.11.tgz#1ac2a750e9d9fe55e293cc6e24366ec6c3abade7"
+  integrity sha512-W4L4HP9LDFEx5NvESjzeqyEp6Vjz9GaR0PvPdtWHxFiQaZboqTNWkf3/YYZ3TeE9Upw98dN+xuh3f0R7yGJzLw==
   dependencies:
     "@openzeppelin/contracts" "4.1.0"
 

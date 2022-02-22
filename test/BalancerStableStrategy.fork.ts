@@ -179,7 +179,7 @@ describe('BalancerStableStrategy - USDC - Join', function () {
     expect(currentValue).to.be.gt(previousValue)
   })
 
-  it('exit  50% strategy', async () => {
+  it('exit 50% strategy', async () => {
     const exitRatio = fp(0.5)
     const initialAmount = toUSDC(50).mul(exitRatio).div(bn(1e18))
     const initialBalance = await vault.getAccountBalance(whale.address, usdc.address)
@@ -211,9 +211,9 @@ describe('BalancerStableStrategy - USDC - Join', function () {
     const accountValue = await vault.getAccountCurrentValue(whale.address, strategy.address)
 
     //rounding issue
-    expectWithError(accountValue, strategyShares.mul(strategyShareValue).div(bn(1e18)).add(12))
+    expectWithError(accountValue, strategyShares.mul(strategyShareValue).div(bn(1e18)).add(13))
 
-    //No roundiing issues
+    //No rounding issues
     const totalValue = await strategy.getTotalValue()
     const strategyShareValueScaled = totalValue.mul(bn(1e36)).div(strategyShares)
     expectWithError(accountValue, strategyShares.mul(strategyShareValueScaled).div(bn(1e36)))
@@ -231,7 +231,7 @@ describe('BalancerStableStrategy - USDC - Join', function () {
     expect(currentValue).to.be.gt(previousValue)
   })
 
-  it('exit  100% strategy', async () => {
+  it('exit 100% strategy', async () => {
     const exitRatio = fp(1)
     const initialAmount = toUSDC(25)
     const initialBalance = await vault.getAccountBalance(whale.address, usdc.address)
