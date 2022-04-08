@@ -32,6 +32,7 @@ contract BalancerWeightedStrategyFactory {
         returns (BalancerWeightedStrategy strategy)
     {
         strategy = new BalancerWeightedStrategy(vault, token, balancerVault, poolId, slippage, metadata);
+        strategy.transferOwnership(msg.sender);
         emit StrategyCreated(strategy);
     }
 }
