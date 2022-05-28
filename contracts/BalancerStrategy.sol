@@ -33,7 +33,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
-    uint256 private constant VAULT_EXIT_RATIO_PRECISION = 1e18;
+    uint256 internal constant VAULT_EXIT_RATIO_PRECISION = 1e18;
     uint256 private constant JOIN_WEIGHTED_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT = 1;
     uint256 private constant EXIT_WEIGHTED_POOL_EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0;
 
@@ -188,7 +188,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         }
     }
 
-    function _joinBalancer(uint256 amount) internal {
+    function _joinBalancer(uint256 amount) internal virtual {
         uint256 minimumBpt = _getMinAmountOut(_token, IERC20(_poolAddress), amount, getSlippage());
         (IERC20[] memory tokens, uint256[] memory amountsIn) = _buildBalancerTokensParams(_tokenIndex, amount);
 
@@ -205,6 +205,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
 
     function _exitBalancer(uint256 ratio, uint256 slippage)
         internal
+        virtual
         returns (uint256 tokenBalance, uint256 bptAmount, uint256 bptBalance)
     {
         bptAmount = SafeMath.div(_getBptBalance().mulDown(ratio), VAULT_EXIT_RATIO_PRECISION);
@@ -287,7 +288,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         return 10**diff;
     }
 
-    function _getTokenIndex(IERC20 token) internal view returns (uint256) {
+    function _getTokenIndex(IERC20 token) internal view virtual returns (uint256) {
         uint256 length = _tokens.length;
         for (uint256 i = 0; i < length; i++) if (_tokens[i] == token) return i;
         revert('TOKEN_DOES_NOT_BELONG_TO_POOL');
