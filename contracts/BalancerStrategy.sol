@@ -19,7 +19,7 @@ import '@mimic-fi/v1-vault/contracts/interfaces/ISwapConnector.sol';
 import '@mimic-fi/v1-vault/contracts/interfaces/IPriceOracle.sol';
 import '@mimic-fi/v1-vault/contracts/interfaces/IVault.sol';
 import '@mimic-fi/v1-vault/contracts/libraries/FixedPoint.sol';
-import '@mimic-fi/v1-portfolios/contracts/agreements/AgreementData.sol';
+import '@mimic-fi/v1-portfolios/contracts/helpers/PortfoliosData.sol';
 
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
@@ -36,7 +36,7 @@ import './balancer/gauges/ILiquidityGauge.sol';
 abstract contract BalancerStrategy is IStrategy, Ownable {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
-    using AgreementData for bytes;
+    using PortfoliosData for bytes;
 
     uint256 private constant MAX_SLIPPAGE = 10e16; // 10%
     uint256 private constant VAULT_EXIT_RATIO_PRECISION = 1e18;
@@ -189,9 +189,9 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
      * @dev Tells how much value the strategy has over time.
      * For example, if a strategy has a value of 100 in T0, and then it has a value of 120 in T1,
      * It means it gained a 20% between T0 and T1 due to swap fees and liquidity mining (re-investments).
+     * Note: This function only tells the total value until the last rewards claim
      */
     function getTotalValue() external view override returns (uint256) {
-        // TODO: contemplate on-going earnings
         uint256 bptRate = IBalancerPool(address(_pool)).getRate();
         uint256 bptBalance = _pool.balanceOf(address(this));
         uint256 stakedBalance = _gauge.balanceOf(address(this));

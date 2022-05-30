@@ -32,4 +32,8 @@ interface ILiquidityGauge {
     function reward_tokens(uint256 i) external view returns (IERC20);
 
     function balanceOf(address user) external view returns (uint256);
+
+    function claimable_tokens(address user) external returns (uint256);
+
+    function claimable_reward(address user, address token) external view returns (uint256);
 }
