@@ -9,7 +9,7 @@ import { task } from 'hardhat/config'
 import { homedir } from 'os'
 import path from 'path'
 
-task(TASK_COMPILE).setAction(overrideFunctions(['claimable_tokens']))
+task(TASK_COMPILE).setAction(overrideFunctions(['claimable_tokens', 'claimAndInvest']))
 
 export default {
   localNetworksConfig: path.join(homedir(), '/.hardhat/networks.mimic.json'),

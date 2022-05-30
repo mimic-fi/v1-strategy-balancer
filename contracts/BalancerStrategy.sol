@@ -191,7 +191,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
      * It means it gained a 20% between T0 and T1 due to swap fees and liquidity mining (re-investments).
      * Note: This function only tells the total value until the last rewards claim
      */
-    function getTotalValue() external view override returns (uint256) {
+    function getTotalValue() public view override returns (uint256) {
         uint256 bptRate = IBalancerPool(address(_pool)).getRate();
         uint256 bptBalance = _pool.balanceOf(address(this));
         uint256 stakedBalance = _gauge.balanceOf(address(this));
@@ -241,7 +241,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         // Pick the minimum slippage since the user is also investing the accrued rewards
         uint256 slippage = Math.min(data.decodeSlippage(), _slippage);
         uint256 initialTokenBalance = _token.balanceOf(address(this));
-        uint256 investedBptAmount = _joinBalancer(initialTokenBalance, slippage);
+        uint256 investedBptAmount = invest(_token, slippage);
 
         // Handle any potential airdrop that does not correspond to the joining user
         uint256 callerBptAmount = SafeMath.div(SafeMath.mul(amount, investedBptAmount), initialTokenBalance);
@@ -253,6 +253,9 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         totalValue = totalStakedBpt.mulDown(bptRate);
     }
 
+    /**
+     * @dev Strategy onExit hook
+     */
     function onExit(uint256 ratio, bool emergency, bytes memory data)
         external
         override
@@ -262,7 +265,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         // Claims before exiting only if it is a non-emergency exit
         if (!emergency) {
             claim();
-            _joinBalancer(_token.balanceOf(address(this)), _slippage);
+            invest(_token, _slippage);
         }
 
         (uint256 tokenAmount, uint256 bptAmount, uint256 bptBalance) = _exitBalancer(ratio, data.decodeSlippage());
@@ -300,7 +303,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
      * If the requested token is not the same token as the strategy token it will be swapped before joining the pool.
      * This method is marked as public so it can be used externally by anyone in case of an airdrop.
      */
-    function invest(IERC20 token, uint256 suggestedSlippage) external returns (uint256 bptBalance) {
+    function invest(IERC20 token, uint256 suggestedSlippage) public returns (uint256 bptBalance) {
         require(token != _pool, 'BALANCER_INTERNAL_TOKEN');
 
         if (token != _token) {
@@ -310,6 +313,16 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
 
         uint256 slippage = Math.min(suggestedSlippage, _slippage);
         return _joinBalancer(_token.balanceOf(address(this)), slippage);
+    }
+
+    /**
+     * @dev Claims and invest rewards.
+     * @return Current total value after investing all accrued rewards.
+     */
+    function claimAndInvest(uint256 suggestedSlippage) external returns (uint256) {
+        claim();
+        invest(_token, suggestedSlippage);
+        return getTotalValue();
     }
 
     /**
