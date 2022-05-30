@@ -14,25 +14,13 @@
 
 pragma solidity ^0.8.0;
 
-import './BalancerStableStrategy.sol';
+import './ILiquidityGauge.sol';
+import './IGaugeController.sol';
 
-contract BalancerStableStrategyFactory {
-    event StrategyCreated(BalancerStableStrategy indexed strategy);
+interface IGaugeAdder {
+    function getVault() external view returns (address);
 
-    IVault public vault;
-    IBalancerVault public balancerVault;
+    function getGaugeController() external view returns (IGaugeController);
 
-    constructor(IVault _vault, IBalancerVault _balancerVault) {
-        vault = _vault;
-        balancerVault = _balancerVault;
-    }
-
-    function create(IERC20 token, bytes32 poolId, uint256 slippage, string memory metadata)
-        external
-        returns (BalancerStableStrategy strategy)
-    {
-        strategy = new BalancerStableStrategy(vault, token, balancerVault, poolId, slippage, metadata);
-        strategy.transferOwnership(msg.sender);
-        emit StrategyCreated(strategy);
-    }
+    function getPoolGauge(IERC20 pool) external view returns (ILiquidityGauge);
 }

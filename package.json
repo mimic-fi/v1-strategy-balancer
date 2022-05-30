@@ -16,7 +16,8 @@
   },
   "dependencies": {
     "@mimic-fi/v1-chainlink-price-oracle": "0.0.4",
-    "@mimic-fi/v1-uniswap-connector": "0.0.4",
+    "@mimic-fi/v1-swap-connector": "0.0.1",
+    "@mimic-fi/v1-portfolios": "0.0.8",
     "@mimic-fi/v1-vault": "0.0.11",
     "@openzeppelin/contracts": "4.1.0"
   },

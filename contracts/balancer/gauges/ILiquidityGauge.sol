@@ -14,8 +14,22 @@
 
 pragma solidity ^0.8.0;
 
-interface IWeightedPool {
-    function getInvariant() external view returns (uint256);
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-    function getNormalizedWeights() external view returns (uint256[] memory);
+// solhint-disable func-name-mixedcase
+
+interface ILiquidityGauge {
+    function deposit(uint256 value) external;
+
+    function withdraw(uint256 value) external;
+
+    function claim_rewards(address user) external;
+
+    function lp_token() external view returns (IERC20);
+
+    function reward_count() external view returns (uint256);
+
+    function reward_tokens(uint256 i) external view returns (IERC20);
+
+    function balanceOf(address user) external view returns (uint256);
 }

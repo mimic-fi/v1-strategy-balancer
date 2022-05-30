@@ -17,6 +17,11 @@ export default {
       },
     },
   },
+  networks: {
+    hardhat: {
+      allowUnlimitedContractSize: true,
+    },
+  },
   mocha: {
     timeout: 40000,
   },

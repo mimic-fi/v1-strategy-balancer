@@ -17,10 +17,9 @@ pragma solidity ^0.8.0;
 import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 
-import './balancer/LogExpMath.sol';
-import './balancer/IWeightedPool.sol';
-
 import './BalancerStrategy.sol';
+import './balancer/pools/LogExpMath.sol';
+import './balancer/pools/IWeightedPool.sol';
 
 contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
     using FixedPoint for uint256;
@@ -29,16 +28,18 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
         IVault vault,
         IERC20 token,
         IBalancerVault balancerVault,
+        IBalancerMinter balancerMinter,
+        ILiquidityGauge gauge,
         bytes32 poolId,
         uint256 slippage,
         string memory metadata
-    ) BalancerStrategy(vault, token, balancerVault, poolId, slippage, metadata) {
+    ) BalancerStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     function getTokenPerBptPrice() public view override returns (uint256) {
         IPriceOracle priceOracle = IPriceOracle(_vault.priceOracle());
-        IWeightedPool weightedPool = IWeightedPool(_poolAddress);
+        IWeightedPool weightedPool = IWeightedPool(address(_pool));
         uint256[] memory weights = weightedPool.getNormalizedWeights();
         (IERC20[] memory tokens, , ) = _balancerVault.getPoolTokens(_poolId);
 
@@ -54,7 +55,7 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
         }
 
         uint256 invariant = weightedPool.getInvariant();
-        uint256 totalSupply = IERC20(_poolAddress).totalSupply();
+        uint256 totalSupply = _pool.totalSupply();
         return SafeMath.div(SafeMath.mul(invariant, mul), totalSupply) / _tokenScale;
     }
 }
