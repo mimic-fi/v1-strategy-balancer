@@ -16,8 +16,6 @@ pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/utils/math/SafeCast.sol';
 
-import './balancer/IBalancerVault.sol';
-
 import './BalancerStableStrategy.sol';
 
 contract BalancerBoostedStrategy is BalancerStableStrategy {
@@ -25,7 +23,7 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
 
     uint256 private constant TOKEN_INDEX = 0;
     uint256 private constant LINEAR_BPT_INDEX = 1;
-    uint256 private constant STABLE_BPT_INDEX = 2;
+    uint256 private constant BPT_INDEX = 2;
 
     bytes32 internal immutable _linearPoolId;
     address internal immutable _linearPoolAddress;
@@ -45,12 +43,13 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
 
     receive() external payable {
         // solhint-disable-previous-line no-empty-blocks
+        revert('UNHANDLED_ETH_PAYMENT');
     }
 
     function _joinBalancer(uint256 amount) internal override {
         int256[] memory limits = new int256[](3);
         limits[TOKEN_INDEX] = SafeCast.toInt256(amount);
-        limits[STABLE_BPT_INDEX] =
+        limits[BPT_INDEX] =
             0 -
             SafeCast.toInt256(_getMinAmountOut(_token, IERC20(_poolAddress), amount, getSlippage()));
 
@@ -64,7 +63,7 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
             _poolId,
             TOKEN_INDEX,
             LINEAR_BPT_INDEX,
-            STABLE_BPT_INDEX
+            BPT_INDEX
         );
 
         _token.approve(address(_balancerVault), amount);
@@ -82,7 +81,7 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
 
         int256[] memory limits = new int256[](3);
         limits[TOKEN_INDEX] = 0 - SafeCast.toInt256(minAmount);
-        limits[STABLE_BPT_INDEX] = SafeCast.toInt256(bptAmount);
+        limits[BPT_INDEX] = SafeCast.toInt256(bptAmount);
 
         address[] memory assets = _buildAssetsParam();
 
@@ -92,7 +91,7 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
             bptAmount,
             _poolId,
             _linearPoolId,
-            STABLE_BPT_INDEX,
+            BPT_INDEX,
             LINEAR_BPT_INDEX,
             TOKEN_INDEX
         );
