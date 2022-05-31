@@ -1,81 +1,62 @@
-import { bn, deploy, fp, getSigner, impersonate, instanceAt } from '@mimic-fi/v1-helpers'
+import {
+  advanceTime,
+  assertEvent,
+  bn,
+  deploy,
+  fp,
+  getSigners,
+  impersonate,
+  instanceAt,
+  MAX_UINT256,
+  MONTH,
+} from '@mimic-fi/v1-helpers'
+import { encodeSlippage } from '@mimic-fi/v1-portfolios/dist/helpers/encoding'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 import { expect } from 'chai'
 import { BigNumber, Contract } from 'ethers'
 
-describe('BalancerStableStrategy - USDC - Join', function () {
-  let owner: SignerWithAddress,
-    whale: SignerWithAddress,
-    trader: SignerWithAddress,
-    vault: Contract,
-    strategy: Contract,
-    bVault: Contract,
-    pool: Contract,
-    usdc: Contract,
-    dai: Contract
+/* eslint-disable no-secrets/no-secrets */
 
-  // eslint-disable-next-line no-secrets/no-secrets
-  const WHALE_WITH_USDC = '0x55FE002aefF02F77364de339a1292923A15844B8'
+const BAL = '0xba100000625a3754423978a60c9317c58a424e3d'
+const LDO = '0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32'
+const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+const WSTETH = '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0'
+const WHALE_WITH_WETH = '0x4a18a50a8328b42773268B4b436254056b7d70CE'
 
-  const BALANCER_VAULT = '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
-  const POOL_DAI_USDC_USDT_ID = '0x06df3b2bbb68adc8b0e302443692037ed9f91b42000000000000000000000063'
-  const POOL_DAI_USDC_USDT_ADDRESS = '0x06df3b2bbb68adc8b0e302443692037ed9f91b42'
+const GAUGE_ADDER = '0xed5ba579bb5d516263ff6e1c10fcac1040075fe2'
+const BALANCER_VAULT = '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
+const BALANCER_MINTER = '0x239e55F427D44C3cc793f49bFB507ebe76638a2b'
 
-  // eslint-disable-next-line no-secrets/no-secrets
-  const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
-  // eslint-disable-next-line no-secrets/no-secrets
-  const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
-  // eslint-disable-next-line no-secrets/no-secrets
-  const USDT = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+const POOL_BAL_WETH_ID = '0x5c6ee304399dbdb9c8ef030ab642b10820db8f56000200000000000000000014'
+const POOL_LDO_WETH_ID = '0xbf96189eee9357a95c7719f4f5047f76bde804e5000200000000000000000087'
+const POOL_wstETH_ETH_ID = '0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080'
 
-  const USDC_SCALING_FACTOR = 1e12
+const UNISWAP_V2_ROUTER = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
+const UNISWAP_V3_ROUTER = '0xE592427A0AEce92De3Edee1F18E0157C05861564'
+const BALANCER_V2_VAULT = '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
 
-  // eslint-disable-next-line no-secrets/no-secrets
-  const UNISWAP_V2_ROUTER_ADDRESS = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
+const CHAINLINK_ORACLE_BAL_ETH = '0xc1438aa3823a6ba0c159cfa8d98df5a994ba120b'
+const CHAINLINK_ORACLE_LDO_ETH = '0x4e844125952d32acdf339be976c98e22f6f318db'
+const PRICE_ONE_ORACLE = '0x1111111111111111111111111111111111111111'
 
-  const CHAINLINK_ORACLE_DAI_ETH = '0x773616E4d11A78F511299002da57A0a94577F1f4'
-  // eslint-disable-next-line no-secrets/no-secrets
-  const CHAINLINK_ORACLE_USDC_ETH = '0x986b5E1e1755e3C2440e960477f25201B0a8bbD4'
-  // eslint-disable-next-line no-secrets/no-secrets
-  const CHAINLINK_ORACLE_USDT_ETH = '0xEe9F2375b4bdF6387aa8265dD4FB8F16512A1d46'
+describe('BalancerStableStrategy - WETH/wstETH', function () {
+  let vault: Contract, strategy: Contract
+  let owner: SignerWithAddress, whale: SignerWithAddress, trader: SignerWithAddress
+  let balancerVault: Contract, pool: Contract, gauge: Contract, weth: Contract, wstEth: Contract, ldo: Contract
 
-  const swap = async (from: SignerWithAddress, amount: BigNumber, assetIn: Contract, assetOut: Contract) => {
-    await assetIn.connect(from).approve(bVault.address, amount)
-
-    const singleSwap = {
-      poolId: POOL_DAI_USDC_USDT_ID,
-      kind: 0, //GIVEN_IN
-      assetIn: assetIn.address,
-      assetOut: assetOut.address,
-      amount,
-      userData: '0x',
-    }
-
-    const funds = {
-      sender: from.address,
-      fromInternalBalance: false,
-      recipient: from.address,
-      toInternalBalance: false,
-    }
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 20
-
-    await bVault.connect(from).swap(singleSwap, funds, 0, deadline)
-  }
+  const SLIPPAGE = fp(0.03)
+  const JOIN_AMOUNT = fp(50)
 
   const expectWithError = (actual: BigNumber, expected: BigNumber) => {
     expect(actual).to.be.at.least(bn(expected).sub(1))
     expect(actual).to.be.at.most(bn(expected).add(1))
   }
 
-  const toUSDC = (amount: number) => {
-    return fp(amount).div(USDC_SCALING_FACTOR)
-  }
-
   before('load signers', async () => {
-    owner = await getSigner()
+    // eslint-disable-next-line prettier/prettier
+    [owner, trader] = await getSigners(2)
     owner = await impersonate(owner.address, fp(100))
-    trader = await getSigner(1)
-    whale = await impersonate(WHALE_WITH_USDC, fp(100))
+    whale = await impersonate(WHALE_WITH_WETH, fp(100))
   })
 
   before('deploy vault', async () => {
@@ -83,9 +64,13 @@ describe('BalancerStableStrategy - USDC - Join', function () {
     const protocolFee = fp(0.00003)
     const whitelistedTokens: string[] = []
     const whitelistedStrategies: string[] = []
-
-    const priceOracleTokens: string[] = [DAI, USDC, USDT]
-    const priceOracleFeeds: string[] = [CHAINLINK_ORACLE_DAI_ETH, CHAINLINK_ORACLE_USDC_ETH, CHAINLINK_ORACLE_USDT_ETH]
+    const priceOracleTokens: string[] = [BAL, LDO, WETH, WSTETH]
+    const priceOracleFeeds: string[] = [
+      CHAINLINK_ORACLE_BAL_ETH,
+      CHAINLINK_ORACLE_LDO_ETH,
+      PRICE_ONE_ORACLE,
+      PRICE_ONE_ORACLE,
+    ]
 
     const priceOracle = await deploy(
       '@mimic-fi/v1-chainlink-price-oracle/artifacts/contracts/ChainLinkPriceOracle.sol/ChainLinkPriceOracle',
@@ -93,9 +78,12 @@ describe('BalancerStableStrategy - USDC - Join', function () {
     )
 
     const swapConnector = await deploy(
-      '@mimic-fi/v1-uniswap-connector/artifacts/contracts/UniswapConnector.sol/UniswapConnector',
-      [UNISWAP_V2_ROUTER_ADDRESS]
+      '@mimic-fi/v1-swap-connector/artifacts/contracts/SwapConnector.sol/SwapConnector',
+      [priceOracle.address, UNISWAP_V3_ROUTER, UNISWAP_V2_ROUTER, BALANCER_V2_VAULT]
     )
+
+    await swapConnector.setBalancerV2Path(BAL, WETH, POOL_BAL_WETH_ID)
+    await swapConnector.setBalancerV2Path(LDO, WETH, POOL_LDO_WETH_ID)
 
     vault = await deploy('@mimic-fi/v1-vault/artifacts/contracts/Vault.sol/Vault', [
       maxSlippage,
@@ -107,148 +95,195 @@ describe('BalancerStableStrategy - USDC - Join', function () {
     ])
   })
 
-  before('load tokens', async () => {
-    bVault = await instanceAt('IBalancerVault', BALANCER_VAULT)
-    pool = await instanceAt('IBalancerPool', POOL_DAI_USDC_USDT_ADDRESS)
-    usdc = await instanceAt('IERC20', USDC)
-    dai = await instanceAt('IERC20', DAI)
-  })
-
-  before('deposit to Vault', async () => {
-    await usdc.connect(whale).approve(vault.address, toUSDC(100))
-    await vault.connect(whale).deposit(whale.address, usdc.address, toUSDC(100), '0x')
-    await usdc.connect(whale).transfer(trader.address, toUSDC(2500000))
-  })
-
   before('deploy strategy', async () => {
-    const slippage = fp(0.01)
-    strategy = await deploy('BalancerStableStrategy', [
+    const factory = await deploy('BalancerStableStrategyFactory', [
       vault.address,
-      usdc.address,
-      bVault.address,
-      POOL_DAI_USDC_USDT_ID,
-      slippage,
-      'metadata:uri',
+      BALANCER_VAULT,
+      BALANCER_MINTER,
+      GAUGE_ADDER,
     ])
+    const createTx = await factory.connect(owner).create(WETH, POOL_wstETH_ETH_ID, SLIPPAGE, 'metadata')
+    const { args } = await assertEvent(createTx, 'StrategyCreated')
+    strategy = await instanceAt('BalancerWeightedStrategy', args.strategy)
   })
 
-  it('join strategy', async () => {
-    const amount = toUSDC(50)
+  before('load dependencies', async () => {
+    ldo = await instanceAt('IERC20', LDO)
+    weth = await instanceAt('IERC20', WETH)
+    wstEth = await instanceAt('IERC20', WSTETH)
+    pool = await instanceAt('IBalancerPool', await strategy.getPool())
+    gauge = await instanceAt('ILiquidityGauge', await strategy.getGauge())
+    balancerVault = await instanceAt('IBalancerVault', BALANCER_VAULT)
+  })
 
-    const previousVaultBalance = await usdc.balanceOf(vault.address)
+  before('deposit tokens', async () => {
+    await weth.connect(whale).approve(vault.address, fp(100))
+    await vault.connect(whale).deposit(whale.address, weth.address, fp(100), '0x')
+  })
 
-    const previousStrategyBalance = await usdc.balanceOf(strategy.address)
+  it('has the correct owner', async () => {
+    expect(await strategy.owner()).to.be.equal(owner.address)
+  })
+
+  it('joins strategy', async () => {
+    const previousVaultBalance = await weth.balanceOf(vault.address)
+    expect(previousVaultBalance).to.be.equal(fp(100))
+
+    const previousStrategyBalance = await weth.balanceOf(strategy.address)
     expect(previousStrategyBalance).to.be.equal(0)
 
-    await vault.connect(whale).join(whale.address, strategy.address, amount, '0x')
+    const encodedSlippage = encodeSlippage(fp(0.01))
+    await vault.connect(whale).join(whale.address, strategy.address, JOIN_AMOUNT, encodedSlippage)
 
-    const currentVaultBalance = await usdc.balanceOf(vault.address)
-    expect(currentVaultBalance).to.be.equal(previousVaultBalance.sub(amount))
+    const currentVaultBalance = await weth.balanceOf(vault.address)
+    expect(currentVaultBalance).to.be.equal(previousVaultBalance.sub(JOIN_AMOUNT))
 
-    const currentStrategyBalance = await usdc.balanceOf(strategy.address)
+    const currentStrategyBalance = await weth.balanceOf(strategy.address)
     expect(currentStrategyBalance).to.be.equal(previousStrategyBalance)
 
     const strategyBptBalance = await pool.balanceOf(strategy.address)
-    const rate = await pool.getRate()
-    const expectedValue = strategyBptBalance.mul(rate).div(bn(1e18))
+    expect(strategyBptBalance).to.be.equal(0)
 
-    const currentInvestment = await vault.getAccountInvestment(whale.address, strategy.address)
-    expectWithError(currentInvestment[0], expectedValue)
-    expectWithError(currentInvestment[1], expectedValue)
+    const rate = await pool.getRate()
+    const stakedBptBalance = await gauge.balanceOf(strategy.address)
+    const expectedValue = stakedBptBalance.mul(rate).div(bn(1e18))
+
+    const { invested, shares } = await vault.getAccountInvestment(whale.address, strategy.address)
+    expectWithError(invested, expectedValue)
+    expectWithError(shares, expectedValue)
 
     const strategyShares = await vault.getStrategyShares(strategy.address)
-    expectWithError(currentInvestment[1], strategyShares)
+    expect(strategyShares).to.be.equal(shares)
 
     const strategyShareValue = await vault.getStrategyShareValue(strategy.address)
     const accountValue = await vault.getAccountCurrentValue(whale.address, strategy.address)
     expectWithError(accountValue, strategyShares.mul(strategyShareValue).div(bn(1e18)))
   })
 
-  it('more gains to recover lost in single token join slipage', async () => {
+  it('accrues BAL and LDO earnings over time', async () => {
+    const initialBalEarnings = await gauge.claimable_tokens(strategy.address)
+    expect(initialBalEarnings).to.be.lt(100)
+
+    const initialLdoEarnings = await gauge.claimable_reward(strategy.address, ldo.address)
+    expect(initialLdoEarnings).to.be.lt(100)
+
+    await advanceTime(MONTH)
+
+    const currentBalEarnings = await gauge.claimable_tokens(strategy.address)
+    expect(currentBalEarnings).to.be.gt(initialBalEarnings)
+
+    const currentLdoEarnings = await gauge.claimable_reward(strategy.address, ldo.address)
+    expect(currentLdoEarnings).to.be.gt(initialLdoEarnings)
+  })
+
+  it('gains swap fees from another trader account', async () => {
+    const swap = async (from: SignerWithAddress, amount: BigNumber, assetIn: Contract, assetOut: Contract) => {
+      await assetIn.connect(from).approve(balancerVault.address, amount)
+
+      const singleSwap = {
+        poolId: POOL_wstETH_ETH_ID,
+        kind: 0, //GIVEN_IN
+        assetIn: assetIn.address,
+        assetOut: assetOut.address,
+        amount,
+        userData: '0x',
+      }
+
+      const funds = {
+        sender: from.address,
+        fromInternalBalance: false,
+        recipient: from.address,
+        toInternalBalance: false,
+      }
+
+      await balancerVault.connect(from).swap(singleSwap, funds, 0, MAX_UINT256)
+    }
+
+    await weth.connect(whale).transfer(trader.address, fp(1000))
     const previousValue = await vault.getAccountCurrentValue(whale.address, strategy.address)
 
     let amount: BigNumber
     for (let index = 0; index < 100; index++) {
-      amount = toUSDC(2000000)
-      await swap(trader, amount, usdc, dai)
-      amount = await dai.balanceOf(trader.address)
-      await swap(trader, amount, dai, usdc)
+      amount = fp(100)
+      await swap(trader, amount, weth, wstEth)
+      amount = await wstEth.balanceOf(trader.address)
+      await swap(trader, amount, wstEth, weth)
     }
 
     const currentValue = await vault.getAccountCurrentValue(whale.address, strategy.address)
     expect(currentValue).to.be.gt(previousValue)
   })
 
-  it('exit 50% strategy', async () => {
-    const exitRatio = fp(0.5)
-    const initialAmount = toUSDC(50).mul(exitRatio).div(bn(1e18))
-    const initialBalance = await vault.getAccountBalance(whale.address, usdc.address)
-
+  it('exits with a 50%', async () => {
+    const previousBalance = await vault.getAccountBalance(whale.address, weth.address)
     const previousInvestment = await vault.getAccountInvestment(whale.address, strategy.address)
 
-    await vault.connect(whale).exit(whale.address, strategy.address, exitRatio, false, '0x')
+    const exitRatio = fp(0.5)
+    const encodedSlippage = encodeSlippage(fp(0.02))
+    await vault.connect(whale).exit(whale.address, strategy.address, exitRatio, false, encodedSlippage)
 
-    const currentBalance = await vault.getAccountBalance(whale.address, usdc.address)
-    const finalAmount = currentBalance.sub(initialBalance)
+    // The user should at least have some gains
+    const currentBalance = await vault.getAccountBalance(whale.address, weth.address)
+    const minExpectedBalance = JOIN_AMOUNT.mul(exitRatio).div(bn(1e18))
+    expect(currentBalance.sub(previousBalance)).to.be.gt(minExpectedBalance)
 
-    expect(finalAmount.gt(initialAmount)).to.be.true
+    // There should not be any remaining tokens in the strategy
+    const strategyWethBalance = await weth.balanceOf(strategy.address)
+    expect(strategyWethBalance).to.be.equal(0)
 
-    const currentStrategyBalance = await usdc.balanceOf(strategy.address)
-    expect(currentStrategyBalance).to.be.equal(0)
-
-    const strategyBptBalance = await pool.balanceOf(strategy.address)
     const rate = await pool.getRate()
-    const expectedValue = strategyBptBalance.mul(rate).div(bn(1e18))
-
+    const currentStakedBptBalance = await gauge.balanceOf(strategy.address)
+    const expectedValue = currentStakedBptBalance.mul(rate).div(bn(1e18))
     const currentInvestment = await vault.getAccountInvestment(whale.address, strategy.address)
-    expectWithError(currentInvestment[0], expectedValue)
-    expectWithError(currentInvestment[1], previousInvestment[1].sub(previousInvestment[1].mul(exitRatio).div(bn(1e18))))
+    expectWithError(currentInvestment.invested, expectedValue)
 
     const strategyShares = await vault.getStrategyShares(strategy.address)
-    expectWithError(currentInvestment[1], strategyShares)
+    expectWithError(currentInvestment.shares, strategyShares)
+    expectWithError(currentInvestment.shares, previousInvestment.shares.mul(exitRatio).div(fp(1)))
 
-    const strategyShareValue = await vault.getStrategyShareValue(strategy.address)
+    // TODO: Review rounding issue
     const accountValue = await vault.getAccountCurrentValue(whale.address, strategy.address)
+    const strategyShareValue = await vault.getStrategyShareValue(strategy.address)
+    const expectedAccountValue = strategyShares.mul(strategyShareValue).div(fp(1))
+    expect(accountValue).to.be.at.least(bn(expectedAccountValue).sub(50))
+    expect(accountValue).to.be.at.most(bn(expectedAccountValue).add(50))
 
-    //rounding issue
-    expectWithError(accountValue, strategyShares.mul(strategyShareValue).div(bn(1e18)).add(13))
-
-    //No rounding issues
+    // No rounding issues
     const totalValue = await strategy.getTotalValue()
     const strategyShareValueScaled = totalValue.mul(bn(1e36)).div(strategyShares)
     expectWithError(accountValue, strategyShares.mul(strategyShareValueScaled).div(bn(1e36)))
   })
 
-  it('handle USDC airdrops', async () => {
+  it('handles WETH airdrops', async () => {
     const previousValue = await vault.getAccountCurrentValue(whale.address, strategy.address)
 
-    //airdrop 1000
-    usdc.connect(trader).transfer(strategy.address, toUSDC(100))
-    //invest aidrop
-    await strategy.invest(usdc.address)
+    // Airdrop 1000 wETH and invest
+    weth.connect(trader).transfer(strategy.address, fp(100))
+    await strategy.invest(weth.address, SLIPPAGE)
 
     const currentValue = await vault.getAccountCurrentValue(whale.address, strategy.address)
     expect(currentValue).to.be.gt(previousValue)
   })
 
-  it('exit 100% strategy', async () => {
+  it('exits with a 100%', async () => {
+    const previousBalance = await vault.getAccountBalance(whale.address, weth.address)
+
     const exitRatio = fp(1)
-    const initialAmount = toUSDC(25)
-    const initialBalance = await vault.getAccountBalance(whale.address, usdc.address)
+    const encodedSlippage = encodeSlippage(fp(0.02))
+    await vault.connect(whale).exit(whale.address, strategy.address, exitRatio, false, encodedSlippage)
 
-    await vault.connect(whale).exit(whale.address, strategy.address, exitRatio, false, '0x')
+    // The user should at least have some gains
+    const currentBalance = await vault.getAccountBalance(whale.address, weth.address)
+    const minExpectedBalance = JOIN_AMOUNT.mul(exitRatio).div(bn(1e18))
+    expect(currentBalance.sub(previousBalance)).to.be.gt(minExpectedBalance)
 
-    const currentBalance = await vault.getAccountBalance(whale.address, usdc.address)
-    const finalAmount = currentBalance.sub(initialBalance)
-
-    expect(finalAmount.gt(initialAmount)).to.be.true
-
-    const currentStrategyBalance = await usdc.balanceOf(strategy.address)
-    expect(currentStrategyBalance).to.be.equal(0)
+    // There should not be any remaining tokens in the strategy
+    const strategyWethBalance = await weth.balanceOf(strategy.address)
+    expect(strategyWethBalance).to.be.equal(0)
 
     const currentInvestment = await vault.getAccountInvestment(whale.address, strategy.address)
-    expectWithError(currentInvestment[0], bn(0))
-    expectWithError(currentInvestment[1], bn(0))
+    expectWithError(currentInvestment.invested, bn(0))
+    expectWithError(currentInvestment.shares, bn(0))
 
     const strategyShares = await vault.getStrategyShares(strategy.address)
     expectWithError(strategyShares, bn(0))

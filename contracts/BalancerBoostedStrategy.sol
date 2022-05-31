@@ -26,19 +26,22 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
     uint256 private constant BPT_INDEX = 2;
 
     bytes32 internal immutable _linearPoolId;
-    address internal immutable _linearPoolAddress;
+    IERC20 internal immutable _linearPool;
 
     constructor(
         IVault vault,
         IERC20 token,
         IBalancerVault balancerVault,
+        IBalancerMinter balancerMinter,
+        ILiquidityGauge gauge,
         bytes32 poolId,
         bytes32 linearPoolId,
         uint256 slippage,
         string memory metadata
-    ) BalancerStableStrategy(vault, token, balancerVault, poolId, slippage, metadata) {
+    ) BalancerStableStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
         _linearPoolId = linearPoolId;
-        (_linearPoolAddress, ) = balancerVault.getPool(linearPoolId);
+        (address linearPoolAddress, ) = balancerVault.getPool(linearPoolId);
+        _linearPool = IERC20(linearPoolAddress);
     }
 
     receive() external payable {
@@ -46,17 +49,19 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
         revert('UNHANDLED_ETH_PAYMENT');
     }
 
-    function _joinBalancer(uint256 amount) internal override {
+    function _joinBalancer(uint256 amount, uint256 slippage) internal override returns (uint256 bptBalance) {
+        if (amount == 0) return 0;
+
+        // Estimate how much BPT the strategy will get after joining with `amount` tokens
+        uint256 minimumBpt = _getMinAmountOut(_token, _pool, amount, slippage);
+
+        // Build the Balancer join data using the strategy token as the only entry point, which will result in
+        // a batch-swap, and ask the minimum BPT based on what was estimated right before
+        address[] memory assets = _buildAssetsParam();
         int256[] memory limits = new int256[](3);
         limits[TOKEN_INDEX] = SafeCast.toInt256(amount);
-        limits[BPT_INDEX] =
-            0 -
-            SafeCast.toInt256(_getMinAmountOut(_token, IERC20(_poolAddress), amount, getSlippage()));
-
-        address[] memory assets = _buildAssetsParam();
-
+        limits[BPT_INDEX] = -SafeCast.toInt256(minimumBpt);
         IBalancerVault.FundManagement memory funds = _buildFundsParam();
-
         IBalancerVault.BatchSwapStep[] memory swaps = _buildBatchSwapStepsParam(
             amount,
             _linearPoolId,
@@ -66,9 +71,14 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
             BPT_INDEX
         );
 
+        // Approve tokens and join the Balancer pool
         _token.approve(address(_balancerVault), amount);
-
         _balancerVault.batchSwap(IBalancerVault.SwapKind.GIVEN_IN, swaps, assets, funds, limits, block.timestamp);
+
+        // Approve and stake the total BPT in the corresponding gauge
+        bptBalance = _pool.balanceOf(address(this));
+        _pool.approve(address(_gauge), bptBalance);
+        _gauge.deposit(bptBalance);
     }
 
     function _exitBalancer(uint256 ratio, uint256 slippage)
@@ -76,17 +86,22 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
         override
         returns (uint256 tokenBalance, uint256 bptAmount, uint256 bptBalance)
     {
-        bptAmount = SafeMath.div(_getBptBalance().mulDown(ratio), VAULT_EXIT_RATIO_PRECISION);
-        uint256 minAmount = _getMinAmountOut(IERC20(_poolAddress), _token, bptAmount, slippage);
+        // Compute the amount of BPT to exit from the Balancer pool based on the given ratio and unstake it from the gauge
+        uint256 initialStakedBptBalance = _gauge.balanceOf(address(this));
+        bptAmount = SafeMath.div(initialStakedBptBalance.mulDown(ratio), VAULT_EXIT_RATIO_PRECISION);
+        _gauge.withdraw(bptAmount);
 
-        int256[] memory limits = new int256[](3);
-        limits[TOKEN_INDEX] = 0 - SafeCast.toInt256(minAmount);
-        limits[BPT_INDEX] = SafeCast.toInt256(bptAmount);
+        // Estimate the expected amount out Compute the amount of BPT to exit from the Balancer pool based on the given ratio
+        // The user is exiting the requested ratio, no other investments are affected
+        uint256 minAmount = _getMinAmountOut(_pool, _token, bptAmount, slippage);
 
+        // Build the Balancer exit data using the strategy token as the only entry point, which will result in
+        // an batchSwap, and ask the minimum amount out based on what was estimated right before
         address[] memory assets = _buildAssetsParam();
-
+        int256[] memory limits = new int256[](3);
+        limits[TOKEN_INDEX] = -SafeCast.toInt256(minAmount);
+        limits[BPT_INDEX] = SafeCast.toInt256(bptAmount);
         IBalancerVault.FundManagement memory funds = _buildFundsParam();
-
         IBalancerVault.BatchSwapStep[] memory swaps = _buildBatchSwapStepsParam(
             bptAmount,
             _poolId,
@@ -96,10 +111,10 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
             TOKEN_INDEX
         );
 
+        // Exit Balancer pool
         _balancerVault.batchSwap(IBalancerVault.SwapKind.GIVEN_IN, swaps, assets, funds, limits, block.timestamp);
-
         tokenBalance = _token.balanceOf(address(this));
-        bptBalance = _getBptBalance();
+        bptBalance = initialStakedBptBalance.sub(bptAmount);
     }
 
     function _buildFundsParam() internal view returns (IBalancerVault.FundManagement memory funds) {
@@ -114,8 +129,8 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
     function _buildAssetsParam() internal view returns (address[] memory assets) {
         assets = new address[](3);
         assets[0] = address(_token);
-        assets[1] = _linearPoolAddress;
-        assets[2] = _poolAddress;
+        assets[1] = address(_linearPool);
+        assets[2] = address(_pool);
     }
 
     function _buildBatchSwapStepsParam(

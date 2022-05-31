@@ -14,27 +14,21 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
+import './BalancerStrategyFactory.sol';
+import '../BalancerWeightedStrategy.sol';
 
-import './BalancerStrategy.sol';
-import './balancer/pools/IBalancerPool.sol';
-
-contract BalancerStableStrategy is BalancerStrategy {
-    constructor(
-        IVault vault,
-        IERC20 token,
-        IBalancerVault balancerVault,
-        IBalancerMinter balancerMinter,
-        ILiquidityGauge gauge,
-        bytes32 poolId,
-        uint256 slippage,
-        string memory metadata
-    ) BalancerStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
+contract BalancerWeightedStrategyFactory is BalancerStrategyFactory {
+    constructor(IVault _vault, IBalancerVault _balancerVault, IBalancerMinter _balancerMinter, IGaugeAdder _gaugeAdder)
+        BalancerStrategyFactory(_vault, _balancerVault, _balancerMinter, _gaugeAdder)
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getTokenPerBptPrice() public view override returns (uint256) {
-        uint256 rate = IBalancerPool(address(_pool)).getRate();
-        return rate / _tokenScale;
+    function _create(IERC20 token, ILiquidityGauge gauge, bytes32 poolId, uint256 slippage, string memory data)
+        internal
+        override
+        returns (BalancerStrategy)
+    {
+        return new BalancerWeightedStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, data);
     }
 }

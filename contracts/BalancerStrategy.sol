@@ -19,38 +19,70 @@ import '@mimic-fi/v1-vault/contracts/interfaces/ISwapConnector.sol';
 import '@mimic-fi/v1-vault/contracts/interfaces/IPriceOracle.sol';
 import '@mimic-fi/v1-vault/contracts/interfaces/IVault.sol';
 import '@mimic-fi/v1-vault/contracts/libraries/FixedPoint.sol';
+import '@mimic-fi/v1-portfolios/contracts/helpers/PortfoliosData.sol';
 
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
+import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 
 import './balancer/IBalancerVault.sol';
-import './balancer/IBalancerPool.sol';
+import './balancer/pools/IBalancerPool.sol';
+import './balancer/gauges/IBalancerMinter.sol';
+import './balancer/gauges/ILiquidityGauge.sol';
 
 abstract contract BalancerStrategy is IStrategy, Ownable {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
+    using PortfoliosData for bytes;
 
+    uint256 private constant MAX_SLIPPAGE = 10e16; // 10%
     uint256 internal constant VAULT_EXIT_RATIO_PRECISION = 1e18;
     uint256 private constant JOIN_WEIGHTED_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT = 1;
     uint256 private constant EXIT_WEIGHTED_POOL_EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0;
 
-    IVault internal immutable _vault;
-    IERC20 internal immutable _token;
-    IBalancerVault internal immutable _balancerVault;
+    event SetSlippage(uint256 slippage);
 
+    // Mimic Vault reference
+    IVault internal immutable _vault;
+
+    // Strategy metadata URI
     string private _metadataURI;
 
-    uint256 internal immutable _slippage;
+    // Slippage to be used to swap and re-invest rewards
+    uint256 internal _slippage;
 
+    // Balancer V2 Vault reference
+    IBalancerVault internal immutable _balancerVault;
+
+    // Balancer token
+    IERC20 internal immutable _balancerToken;
+
+    // Balancer Minter reference
+    IBalancerMinter internal immutable _balancerMinter;
+
+    // Liquidity gauge associated to the Balancer pool
+    ILiquidityGauge internal immutable _gauge;
+
+    // Balancer V2's internal identifier for the Balancer pool
     bytes32 internal immutable _poolId;
-    address internal immutable _poolAddress;
 
-    uint256 internal immutable _tokenIndex;
-    uint256 internal immutable _tokenScale;
+    // Address of the Balancer pool contract
+    IERC20 internal immutable _pool;
+
+    // List of tokens composing the Balancer pool
     IERC20[] internal _tokens;
+
+    // Pool token that will be used as the strategy entry point
+    IERC20 internal immutable _token;
+
+    // Index of the entry point token in the list of tokens of the Balancer pool
+    uint256 internal immutable _tokenIndex;
+
+    // Scaling factor of the entry point token
+    uint256 internal immutable _tokenScale;
 
     modifier onlyVault() {
         require(address(_vault) == msg.sender, 'CALLER_IS_NOT_VAULT');
@@ -61,137 +93,250 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         IVault vault,
         IERC20 token,
         IBalancerVault balancerVault,
+        IBalancerMinter balancerMinter,
+        ILiquidityGauge gauge,
         bytes32 poolId,
         uint256 slippage,
         string memory metadataURI
     ) {
-        require(slippage <= FixedPoint.ONE, 'SWAP_SLIPPAGE_ABOVE_1');
-
         _vault = vault;
         _token = token;
         _balancerVault = balancerVault;
+        _balancerMinter = balancerMinter;
+        _balancerToken = balancerMinter.getBalancerToken();
+        _gauge = gauge;
         _poolId = poolId;
-        _slippage = slippage;
-
+        _setSlippage(slippage);
         _setMetadataURI(metadataURI);
         _setTokens(balancerVault, poolId);
-
         _tokenIndex = _getTokenIndex(token);
         _tokenScale = _getTokenScale(token);
-
-        (_poolAddress, ) = balancerVault.getPool(poolId);
+        (address poolAddress, ) = balancerVault.getPool(poolId);
+        _pool = IERC20(poolAddress);
     }
 
+    /**
+     * @dev Tells the address of the Mimic Vault
+     */
     function getVault() external view returns (address) {
         return address(_vault);
     }
 
-    function getToken() external view override returns (address) {
-        return address(_token);
-    }
-
+    /**
+     * @dev Tell the metadata URI associated to the strategy
+     */
     function getMetadataURI() external view override returns (string memory) {
         return _metadataURI;
     }
 
-    function getSlippage() public view returns (uint256) {
+    /**
+     * @dev Tell the slippage
+     */
+    function getSlippage() external view returns (uint256) {
         return _slippage;
     }
 
-    function getPoolAddress() external view returns (address) {
-        return _poolAddress;
+    /**
+     * @dev Tells the address of the Balancer Vault
+     */
+    function getBalancerVault() external view returns (address) {
+        return address(_balancerVault);
     }
 
+    /**
+     * @dev Tells the address of the liquidity gauge associated to the Balancer pool
+     */
+    function getGauge() external view returns (address) {
+        return address(_gauge);
+    }
+
+    /**
+     * @dev Tells the Balancer identifier of the Balancer pool associated to the strategy
+     */
     function getPoolId() external view returns (bytes32) {
         return _poolId;
     }
 
+    /**
+     * @dev Tells the address of the Balancer pool associated to the strategy
+     */
+    function getPool() external view returns (address) {
+        return address(_pool);
+    }
+
+    /**
+     * @dev Tells the pool token that will be used as the strategy entry point
+     */
+    function getToken() external view override returns (address) {
+        return address(_token);
+    }
+
+    /**
+     * @dev Tells the index of the entry point token in the list of tokens of the Balancer pool
+     */
     function getTokenIndex() external view returns (uint256) {
         return _tokenIndex;
     }
 
+    /**
+     * @dev Tells the scaling factor of the entry point token
+     */
+    function getTokenScale() external view returns (uint256) {
+        return _tokenScale;
+    }
+
+    /**
+     * @dev Tells how much value the strategy has over time.
+     * For example, if a strategy has a value of 100 in T0, and then it has a value of 120 in T1,
+     * It means it gained a 20% between T0 and T1 due to swap fees and liquidity mining (re-investments).
+     * Note: This function only tells the total value until the last rewards claim
+     */
+    function getTotalValue() public view override returns (uint256) {
+        uint256 bptRate = IBalancerPool(address(_pool)).getRate();
+        uint256 bptBalance = _pool.balanceOf(address(this));
+        uint256 stakedBalance = _gauge.balanceOf(address(this));
+        return bptBalance.add(stakedBalance).mulDown(bptRate);
+    }
+
+    /**
+     * @dev Tells how much a value unit means expressed in the strategy token.
+     * For example, if a strategy has a value of 100 in T0, and then it has a value of 120 in T1,
+     * and the value rate is 1.5, it means the strategy has earned 30 strategy tokens between T0 and T1.
+     */
     function getValueRate() external view override returns (uint256) {
-        return getTokenPerBptPrice().divUp(_getBptRate());
+        uint256 bptRate = IBalancerPool(address(_pool)).getRate();
+        return getTokenPerBptPrice().divUp(bptRate);
     }
 
-    function getTotalValue() external view override returns (uint256) {
-        return _getBptBalance().mulDown(_getBptRate());
-    }
-
+    /**
+     * @dev Tells the exchange rate for a BPT expressed in the strategy token
+     */
     function getTokenPerBptPrice() public view virtual returns (uint256);
 
-    function setMetadataURI(string memory metadataURI) external onlyOwner {
-        _setMetadataURI(metadataURI);
+    /**
+     * @dev Setter to override the existing metadata URI
+     */
+    function setMetadataURI(string memory newMetadataURI) external onlyOwner {
+        _setMetadataURI(newMetadataURI);
     }
 
-    function withdraw(IERC20 token, address recipient) external onlyOwner {
-        if (token != _token && address(token) != _poolAddress) {
-            uint256 balance = token.balanceOf(address(this));
-            token.transfer(recipient, balance);
-        }
+    /**
+     * @dev Setter to update the slippage
+     */
+    function setSlippage(uint256 newSlippage) external onlyOwner {
+        _setSlippage(newSlippage);
     }
 
-    function onJoin(uint256 amount, bytes memory)
+    /**
+     * @dev Strategy onJoin hook
+     */
+    function onJoin(uint256 amount, bytes memory data)
         external
         override
         onlyVault
         returns (uint256 value, uint256 totalValue)
     {
+        claim();
+
+        // Pick the minimum slippage since the user is also investing the accrued rewards
+        uint256 slippage = Math.min(data.decodeSlippage(), _slippage);
         uint256 initialTokenBalance = _token.balanceOf(address(this));
-        uint256 initialBptBalance = _getBptBalance();
+        uint256 investedBptAmount = invest(_token, slippage);
 
-        invest(_token);
-
-        uint256 finalBptBalance = _getBptBalance();
         // Handle any potential airdrop that does not correspond to the joining user
-        uint256 callerBptAmount = SafeMath.div(
-            SafeMath.mul(amount, finalBptBalance.sub(initialBptBalance)),
-            initialTokenBalance
-        );
+        uint256 callerBptAmount = SafeMath.div(SafeMath.mul(amount, investedBptAmount), initialTokenBalance);
 
-        uint256 bptRate = _getBptRate();
+        uint256 bptRate = IBalancerPool(address(_pool)).getRate();
         value = callerBptAmount.mulDown(bptRate);
-        totalValue = finalBptBalance.mulDown(bptRate);
+
+        uint256 totalStakedBpt = _gauge.balanceOf(address(this));
+        totalValue = totalStakedBpt.mulDown(bptRate);
     }
 
+    /**
+     * @dev Strategy onExit hook
+     */
     function onExit(uint256 ratio, bool emergency, bytes memory data)
         external
         override
         onlyVault
         returns (address token, uint256 amount, uint256 value, uint256 totalValue)
     {
-        // Invests before exiting only if it is a normal exit
+        // Claims before exiting only if it is a non-emergency exit
         if (!emergency) {
-            invest(_token);
+            claim();
+            invest(_token, _slippage);
         }
 
-        // Use custom slippage if an emergency exit was requested
-        uint256 slippage = emergency ? abi.decode(data, (uint256)) : getSlippage();
-        (uint256 tokenAmount, uint256 bptAmount, uint256 bptBalance) = _exitBalancer(ratio, slippage);
+        (uint256 tokenAmount, uint256 bptAmount, uint256 bptBalance) = _exitBalancer(ratio, data.decodeSlippage());
         _token.approve(address(_vault), tokenAmount);
 
-        uint256 bptRate = _getBptRate();
+        uint256 bptRate = IBalancerPool(address(_pool)).getRate();
         value = bptAmount.mulDown(bptRate);
         totalValue = bptBalance.mulDown(bptRate);
         return (address(_token), tokenAmount, value, totalValue);
     }
 
-    function invest(IERC20 token) public {
-        require(address(token) != address(_poolAddress), 'BALANCER_INTERNAL_TOKEN');
+    /**
+     * @dev Claims Balancer rewards. All the given rewards that are not the strategy token are swapped for it.
+     * After swapping all the rewards for the strategy token, it joins the Balancer pool with the final amount.
+     */
+    function claim() public {
+        // Claim BAL rewards
+        uint256 balAmount = _balancerMinter.mint(address(_gauge));
+        _swap(_balancerToken, _token, balAmount);
 
-        uint256 balance = token.balanceOf(address(this));
-        if (balance > 0) {
-            if (token != _token) {
-                _swap(token, _token, balance, getSlippage());
+        // Claim other token rewards
+        _gauge.claim_rewards(address(this));
+        uint256 rewards = _gauge.reward_count();
+        for (uint256 i = 0; i < rewards; i++) {
+            IERC20 rewardsToken = _gauge.reward_tokens(i);
+            if (rewardsToken != _token && rewardsToken != _pool) {
+                uint256 balance = rewardsToken.balanceOf(address(this));
+                _swap(rewardsToken, _token, balance);
             }
-            _joinBalancer(_token.balanceOf(address(this)));
         }
     }
 
-    function _joinBalancer(uint256 amount) internal virtual {
-        uint256 minimumBpt = _getMinAmountOut(_token, IERC20(_poolAddress), amount, getSlippage());
-        (IERC20[] memory tokens, uint256[] memory amountsIn) = _buildBalancerTokensParams(_tokenIndex, amount);
+    /**
+     * @dev Invest all the balance of a token in the strategy into the associated Balancer pool.
+     * If the requested token is not the same token as the strategy token it will be swapped before joining the pool.
+     * This method is marked as public so it can be used externally by anyone in case of an airdrop.
+     */
+    function invest(IERC20 token, uint256 suggestedSlippage) public returns (uint256 bptBalance) {
+        require(token != _pool, 'BALANCER_INTERNAL_TOKEN');
 
+        if (token != _token) {
+            uint256 amountIn = token.balanceOf(address(this));
+            _swap(token, _token, amountIn);
+        }
+
+        uint256 slippage = Math.min(suggestedSlippage, _slippage);
+        return _joinBalancer(_token.balanceOf(address(this)), slippage);
+    }
+
+    /**
+     * @dev Claims and invest rewards.
+     * @return Current total value after investing all accrued rewards.
+     */
+    function claimAndInvest(uint256 suggestedSlippage) external returns (uint256) {
+        claim();
+        invest(_token, suggestedSlippage);
+        return getTotalValue();
+    }
+
+    /**
+     * @dev Internal function to join the Balancer pool
+     */
+    function _joinBalancer(uint256 amount, uint256 slippage) internal virtual returns (uint256 bptBalance) {
+        if (amount == 0) return 0;
+
+        // Estimate how much BPT the strategy will get after joining with `amount` tokens
+        uint256 minimumBpt = _getMinAmountOut(_token, _pool, amount, slippage);
+
+        // Build the Balancer join data using the strategy token as the only entry point, which will result in
+        // a join-swap, and ask the minimum BPT based on what was estimated right before
+        (IERC20[] memory tokens, uint256[] memory amountsIn) = _buildBalancerTokensParams(amount);
         IBalancerVault.JoinPoolRequest memory request = IBalancerVault.JoinPoolRequest({
             assets: tokens,
             maxAmountsIn: amountsIn,
@@ -199,19 +344,36 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
             fromInternalBalance: false
         });
 
+        // Approve tokens and join the Balancer pool
         _token.approve(address(_balancerVault), amount);
         _balancerVault.joinPool(_poolId, address(this), address(this), request);
+
+        // Approve and stake the total BPT in the corresponding gauge
+        bptBalance = _pool.balanceOf(address(this));
+        _pool.approve(address(_gauge), bptBalance);
+        _gauge.deposit(bptBalance);
     }
 
+    /**
+     * @dev Internal function to exit the Balancer pool
+     */
     function _exitBalancer(uint256 ratio, uint256 slippage)
         internal
         virtual
         returns (uint256 tokenBalance, uint256 bptAmount, uint256 bptBalance)
     {
-        bptAmount = SafeMath.div(_getBptBalance().mulDown(ratio), VAULT_EXIT_RATIO_PRECISION);
-        uint256 minAmount = _getMinAmountOut(IERC20(_poolAddress), _token, bptAmount, slippage);
-        (IERC20[] memory tokens, uint256[] memory minAmountsOut) = _buildBalancerTokensParams(_tokenIndex, minAmount);
+        // Compute the amount of BPT to exit from the Balancer pool based on the given ratio and unstake it from the gauge
+        uint256 initialStakedBptBalance = _gauge.balanceOf(address(this));
+        bptAmount = SafeMath.div(initialStakedBptBalance.mulDown(ratio), VAULT_EXIT_RATIO_PRECISION);
+        _gauge.withdraw(bptAmount);
 
+        // Estimate the expected amount out Compute the amount of BPT to exit from the Balancer pool based on the given ratio
+        // The user is exiting the requested ratio, no other investments are affected
+        uint256 minAmount = _getMinAmountOut(_pool, _token, bptAmount, slippage);
+
+        // Build the Balancer exit data using the strategy token as the only entry point, which will result in
+        // an exit-swap, and ask the minimum amount out based on what was estimated right before
+        (IERC20[] memory tokens, uint256[] memory minAmountsOut) = _buildBalancerTokensParams(minAmount);
         IBalancerVault.ExitPoolRequest memory request = IBalancerVault.ExitPoolRequest({
             assets: tokens,
             minAmountsOut: minAmountsOut,
@@ -219,27 +381,26 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
             toInternalBalance: false
         });
 
+        // Exit Balancer pool
         _balancerVault.exitPool(_poolId, address(this), payable(address(this)), request);
-
         tokenBalance = _token.balanceOf(address(this));
-        bptBalance = _getBptBalance();
+        bptBalance = initialStakedBptBalance.sub(bptAmount);
     }
 
-    function _swap(IERC20 tokenIn, IERC20 tokenOut, uint256 amountIn, uint256 slippage) internal returns (uint256) {
+    /**
+     * @dev Internal function to swap a pair of tokens using the Vault's swap connector
+     */
+    function _swap(IERC20 tokenIn, IERC20 tokenOut, uint256 amountIn) internal {
+        if (amountIn == 0) return;
         require(tokenIn != tokenOut, 'SWAP_SAME_TOKEN');
 
-        uint256 minAmountOut = _getMinAmountOut(tokenIn, tokenOut, amountIn, slippage);
-        ISwapConnector swapConnector = ISwapConnector(_vault.swapConnector());
-        uint256 expectedAmountOut = swapConnector.getAmountOut(address(tokenIn), address(tokenOut), amountIn);
-        require(expectedAmountOut >= minAmountOut, 'EXPECTED_SWAP_MIN_AMOUNT');
-
-        if (amountIn > 0) {
-            tokenIn.safeTransfer(address(swapConnector), amountIn);
-        }
+        uint256 minAmountOut = _getMinAmountOut(tokenIn, tokenOut, amountIn, _slippage);
+        address swapConnector = _vault.swapConnector();
+        tokenIn.safeTransfer(swapConnector, amountIn);
 
         uint256 preBalanceIn = tokenIn.balanceOf(address(this));
         uint256 preBalanceOut = tokenOut.balanceOf(address(this));
-        (uint256 remainingIn, uint256 amountOut) = swapConnector.swap(
+        (uint256 remainingIn, uint256 amountOut) = ISwapConnector(swapConnector).swap(
             address(tokenIn),
             address(tokenOut),
             amountIn,
@@ -253,19 +414,21 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         require(postBalanceIn >= preBalanceIn.add(remainingIn), 'SWAP_INVALID_REMAINING_IN');
         uint256 postBalanceOut = tokenOut.balanceOf(address(this));
         require(postBalanceOut >= preBalanceOut.add(amountOut), 'SWAP_INVALID_AMOUNT_OUT');
-        return amountOut;
     }
 
+    /**
+     * @dev Tells the expected min amount for a swap using the price oracle or the pool itself for joins and exits
+     */
     function _getMinAmountOut(IERC20 tokenIn, IERC20 tokenOut, uint256 amountIn, uint256 slippage)
         internal
         view
         returns (uint256 minAmountOut)
     {
         uint256 price;
-        if (address(tokenIn) == _poolAddress && tokenOut == _token) {
-            price = getTokenPerBptPrice();
-        } else if (tokenIn == _token && address(tokenOut) == _poolAddress) {
+        if (tokenIn == _token && tokenOut == _pool) {
             price = FixedPoint.ONE.divUp(getTokenPerBptPrice());
+        } else if (tokenIn == _pool && tokenOut == _token) {
+            price = getTokenPerBptPrice();
         } else {
             price = IPriceOracle(_vault.priceOracle()).getTokenPrice(address(tokenOut), address(tokenIn));
         }
@@ -273,28 +436,19 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         minAmountOut = amountIn.mulUp(price).mulUp(FixedPoint.ONE - slippage);
     }
 
-    function _getBptRate() internal view returns (uint256) {
-        return IBalancerPool(_poolAddress).getRate();
-    }
-
+    /**
+     * @dev Tells the total BPT balance: owned + staked
+     */
     function _getBptBalance() internal view returns (uint256) {
-        return IERC20(_poolAddress).balanceOf(address(this));
+        uint256 bptBalance = _pool.balanceOf(address(this));
+        uint256 stakedBalance = _gauge.balanceOf(address(this));
+        return bptBalance.add(stakedBalance);
     }
 
-    function _getTokenScale(IERC20 token) internal view returns (uint256) {
-        uint256 decimals = IERC20Metadata(address(token)).decimals();
-        require(decimals <= 18, 'TOKEN_WORKS_WITH_BIGGER_DECIMALS');
-        uint256 diff = 18 - decimals;
-        return 10**diff;
-    }
-
-    function _getTokenIndex(IERC20 token) internal view virtual returns (uint256) {
-        uint256 length = _tokens.length;
-        for (uint256 i = 0; i < length; i++) if (_tokens[i] == token) return i;
-        revert('TOKEN_DOES_NOT_BELONG_TO_POOL');
-    }
-
-    function _buildBalancerTokensParams(uint256 index, uint256 amount)
+    /**
+     * @dev Builds the params list required to interact with a Balancer pool.
+     */
+    function _buildBalancerTokensParams(uint256 amount)
         internal
         view
         returns (IERC20[] memory tokens, uint256[] memory amounts)
@@ -302,17 +456,53 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         tokens = new IERC20[](_tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) tokens[i] = _tokens[i];
         amounts = new uint256[](tokens.length);
-        amounts[index] = amount;
+        amounts[_tokenIndex] = amount;
     }
 
-    function _setMetadataURI(string memory metadataURI) private {
-        _metadataURI = metadataURI;
-        emit SetMetadataURI(metadataURI);
+    /**
+     * @dev Tells the scaling factor to be used for the strategy token.
+     * This strategy does not support working with tokens that use more than 18 decimals.
+     */
+    function _getTokenScale(IERC20 token) internal view returns (uint256) {
+        uint256 decimals = IERC20Metadata(address(token)).decimals();
+        require(decimals <= 18, 'TOKEN_WORKS_WITH_BIGGER_DECIMALS');
+        uint256 diff = 18 - decimals;
+        return 10**diff;
     }
 
+    /**
+     * @dev Internal function to set the metadata URI
+     */
+    function _setMetadataURI(string memory newMetadataURI) private {
+        _metadataURI = newMetadataURI;
+        emit SetMetadataURI(newMetadataURI);
+    }
+
+    /**
+     * @dev Internal function to set the slippage
+     */
+    function _setSlippage(uint256 newSlippage) private {
+        require(newSlippage <= MAX_SLIPPAGE, 'SLIPPAGE_ABOVE_MAX');
+
+        _slippage = newSlippage;
+        emit SetSlippage(newSlippage);
+    }
+
+    /**
+     * @dev Internal function to cache the Balancer pool tokens. Used only by the constructor.
+     */
     function _setTokens(IBalancerVault vault, bytes32 poolId) private {
         (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
         _tokens = new IERC20[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) _tokens[i] = tokens[i];
+    }
+
+    /**
+     * @dev Tells the index of the strategy token in the list of tokens associated to the Balancer pool.
+     */
+    function _getTokenIndex(IERC20 token) internal view virtual returns (uint256) {
+        uint256 length = _tokens.length;
+        for (uint256 i = 0; i < length; i++) if (_tokens[i] == token) return i;
+        revert('TOKEN_DOES_NOT_BELONG_TO_POOL');
     }
 }
