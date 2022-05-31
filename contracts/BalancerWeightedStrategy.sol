@@ -21,7 +21,7 @@ import './BalancerStrategy.sol';
 import './balancer/pools/LogExpMath.sol';
 import './balancer/pools/IWeightedPool.sol';
 
-contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
+contract BalancerWeightedStrategy is BalancerStrategy {
     using FixedPoint for uint256;
 
     constructor(
@@ -51,7 +51,7 @@ contract BalancerWeightedStrategy is BalancerStrategy, LogExpMath {
                 ? FixedPoint.ONE
                 : ((priceOracle.getTokenPrice(address(_token), address(token)) * _tokenScale) / _getTokenScale(token));
 
-            mul = mul.mulDown(pow(price.divDown(weight), weight));
+            mul = mul.mulDown(LogExpMath.pow(price.divDown(weight), weight));
         }
 
         uint256 invariant = weightedPool.getInvariant();

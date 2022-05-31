@@ -88,15 +88,13 @@ describe('BalancerWeightedStrategy - wETH/wBTC', function () {
   })
 
   before('deploy strategy', async () => {
-    const factory = await deploy('BalancerWeightedStrategyFactory', [
-      vault.address,
-      BALANCER_VAULT,
-      BALANCER_MINTER,
-      GAUGE_ADDER,
-    ])
+    const args = [vault.address, BALANCER_VAULT, BALANCER_MINTER, GAUGE_ADDER]
+    const libraries = { LogExpMath: (await deploy('LogExpMath')).address }
+    const factory = await deploy('BalancerWeightedStrategyFactory', args, whale, libraries)
+
     const createTx = await factory.connect(owner).create(WETH, POOL_WBTC_WETH_ID, SLIPPAGE, 'metadata')
-    const { args } = await assertEvent(createTx, 'StrategyCreated')
-    strategy = await instanceAt('BalancerWeightedStrategy', args.strategy)
+    const event = await assertEvent(createTx, 'StrategyCreated')
+    strategy = await instanceAt('BalancerWeightedStrategy', event.args.strategy)
   })
 
   before('load dependencies', async () => {

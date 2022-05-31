@@ -26,7 +26,7 @@ pragma solidity ^0.8.0;
  * @author Sergio Yuhjtman - @sergioyuhjtman
  * @author Daniel Fernandez - @dmf7z
  */
-contract LogExpMath {
+library LogExpMath {
     // All fixed point multiplications and divisions are inlined. This means we need to divide by ONE when multiplying
     // two numbers, and multiply by ONE when dividing them.
 
@@ -88,7 +88,7 @@ contract LogExpMath {
      *
      * Reverts if ln(x) * y is smaller than `MIN_NATURAL_EXPONENT`, or larger than `MAX_NATURAL_EXPONENT`.
      */
-    function pow(uint256 x, uint256 y) internal pure returns (uint256) {
+    function pow(uint256 x, uint256 y) public pure returns (uint256) {
         if (y == 0) {
             // We solve the 0^0 indetermination by making it equal one.
             return uint256(ONE_18);
@@ -130,7 +130,7 @@ contract LogExpMath {
         // Finally, we compute exp(y * ln(x)) to arrive at x^y
         require(MIN_NATURAL_EXPONENT <= logx_times_y && logx_times_y <= MAX_NATURAL_EXPONENT, 'PRODUCT_OUT_OF_BOUNDS');
 
-        return uint256(exp(logx_times_y));
+        return uint256(_exp(logx_times_y));
     }
 
     /**
@@ -138,14 +138,14 @@ contract LogExpMath {
      *
      * Reverts if `x` is smaller than MIN_NATURAL_EXPONENT, or larger than `MAX_NATURAL_EXPONENT`.
      */
-    function exp(int256 x) internal pure returns (int256) {
+    function _exp(int256 x) private pure returns (int256) {
         require(x >= MIN_NATURAL_EXPONENT && x <= MAX_NATURAL_EXPONENT, 'INVALID_EXPONENT');
 
         if (x < 0) {
             // We only handle positive exponents: e^(-x) is computed as 1 / e^x. We can safely make x positive since it
             // fits in the signed 256 bit range (as it is larger than MIN_NATURAL_EXPONENT).
             // Fixed point division requires multiplying by ONE_18.
-            return ((ONE_18 * ONE_18) / exp(-x));
+            return ((ONE_18 * ONE_18) / _exp(-x));
         }
 
         // First, we use the fact that e^(x+y) = e^x * e^y to decompose x into a sum of powers of two, which we call x_n,
@@ -273,46 +273,6 @@ contract LogExpMath {
         // and then drop two digits to return an 18 decimal value.
 
         return (((product * seriesSum) / ONE_20) * firstAN) / 100;
-    }
-
-    /**
-     * @dev Logarithm (log(arg, base), with signed 18 decimal fixed point base and argument.
-     */
-    function log(int256 arg, int256 base) internal pure returns (int256) {
-        // This performs a simple base change: log(arg, base) = ln(arg) / ln(base).
-
-        // Both logBase and logArg are computed as 36 decimal fixed point numbers, either by using ln_36, or by
-        // upscaling.
-
-        int256 logBase;
-        if (LN_36_LOWER_BOUND < base && base < LN_36_UPPER_BOUND) {
-            logBase = _ln_36(base);
-        } else {
-            logBase = _ln(base) * ONE_18;
-        }
-
-        int256 logArg;
-        if (LN_36_LOWER_BOUND < arg && arg < LN_36_UPPER_BOUND) {
-            logArg = _ln_36(arg);
-        } else {
-            logArg = _ln(arg) * ONE_18;
-        }
-
-        // When dividing, we multiply by ONE_18 to arrive at a result with 18 decimal places
-        return (logArg * ONE_18) / logBase;
-    }
-
-    /**
-     * @dev Natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
-     */
-    function ln(int256 a) internal pure returns (int256) {
-        // The real natural logarithm is not defined for negative numbers or zero.
-        require(a > 0, 'OUT_OF_BOUNDS');
-        if (LN_36_LOWER_BOUND < a && a < LN_36_UPPER_BOUND) {
-            return _ln_36(a) / ONE_18;
-        } else {
-            return _ln(a);
-        }
     }
 
     /**
