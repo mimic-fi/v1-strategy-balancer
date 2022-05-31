@@ -125,6 +125,11 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
     expect(await strategy.owner()).to.be.equal(owner.address)
   })
 
+  it('sets metadata', async () => {
+    await strategy.connect(owner).setMetadataURI('metadata:uri:2.0')
+    expect(await strategy.getMetadataURI()).to.be.equal('metadata:uri:2.0')
+  })
+
   it('joins strategy', async () => {
     const previousVaultBalance = await weth.balanceOf(vault.address)
     expect(previousVaultBalance).to.be.equal(fp(100))
@@ -146,7 +151,7 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
 
     const rate = await pool.getRate()
     const stakedBptBalance = await gauge.balanceOf(strategy.address)
-    const expectedValue = stakedBptBalance.mul(rate).div(bn(1e18))
+    const expectedValue = stakedBptBalance.mul(rate).div(fp(1))
 
     const { invested, shares } = await vault.getAccountInvestment(whale.address, strategy.address)
     expectWithError(invested, expectedValue)
@@ -157,7 +162,7 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
 
     const strategyShareValue = await vault.getStrategyShareValue(strategy.address)
     const accountValue = await vault.getAccountCurrentValue(whale.address, strategy.address)
-    expectWithError(accountValue, strategyShares.mul(strategyShareValue).div(bn(1e18)))
+    expectWithError(accountValue, strategyShares.mul(strategyShareValue).div(fp(1)))
   })
 
   it('accrues BAL and LDO earnings over time', async () => {
@@ -224,7 +229,7 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
 
     // The user should at least have some gains
     const currentBalance = await vault.getAccountBalance(whale.address, weth.address)
-    const minExpectedBalance = JOIN_AMOUNT.mul(exitRatio).div(bn(1e18))
+    const minExpectedBalance = JOIN_AMOUNT.mul(exitRatio).div(fp(1))
     expect(currentBalance.sub(previousBalance)).to.be.gt(minExpectedBalance)
 
     // There should not be any remaining tokens in the strategy
@@ -233,7 +238,7 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
 
     const rate = await pool.getRate()
     const currentStakedBptBalance = await gauge.balanceOf(strategy.address)
-    const expectedValue = currentStakedBptBalance.mul(rate).div(bn(1e18))
+    const expectedValue = currentStakedBptBalance.mul(rate).div(fp(1))
     const currentInvestment = await vault.getAccountInvestment(whale.address, strategy.address)
     expectWithError(currentInvestment.invested, expectedValue)
 
@@ -274,7 +279,7 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
 
     // The user should at least have some gains
     const currentBalance = await vault.getAccountBalance(whale.address, weth.address)
-    const minExpectedBalance = JOIN_AMOUNT.mul(exitRatio).div(bn(1e18))
+    const minExpectedBalance = JOIN_AMOUNT.mul(exitRatio).div(fp(1))
     expect(currentBalance.sub(previousBalance)).to.be.gt(minExpectedBalance)
 
     // There should not be any remaining tokens in the strategy
