@@ -49,6 +49,13 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
         revert('UNHANDLED_ETH_PAYMENT');
     }
 
+    /**
+     * @dev Tells the address of the Balancer pool associated to the strategy
+     */
+    function getLinearPool() external view returns (address) {
+        return address(_linearPool);
+    }
+
     function _joinBalancer(uint256 amount, uint256 slippage) internal override returns (uint256 bptBalance) {
         if (amount == 0) return 0;
 

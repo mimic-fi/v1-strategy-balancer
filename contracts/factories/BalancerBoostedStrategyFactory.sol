@@ -15,9 +15,9 @@
 pragma solidity ^0.8.0;
 
 import './BalancerStrategyFactory.sol';
-import '../BalancerStableStrategy.sol';
+import '../BalancerBoostedStrategy.sol';
 
-contract BalancerStableStrategyFactory is BalancerStrategyFactory {
+contract BalancerBoostedStrategyFactory is BalancerStrategyFactory {
     constructor(IVault _vault, IBalancerVault _balancerVault, IBalancerMinter _balancerMinter, IGaugeAdder _gaugeAdder)
         BalancerStrategyFactory(_vault, _balancerVault, _balancerMinter, _gaugeAdder)
     {
@@ -31,7 +31,19 @@ contract BalancerStableStrategyFactory is BalancerStrategyFactory {
         uint256 slippage,
         string memory data
     ) internal override returns (BalancerStrategy) {
+        require(poolIds.length == 2, 'INVALID_POOL_IDS_LENGTH');
+
         return
-            new BalancerStableStrategy(vault, token, balancerVault, balancerMinter, gauge, poolIds[0], slippage, data);
+            new BalancerBoostedStrategy(
+                vault,
+                token,
+                balancerVault,
+                balancerMinter,
+                gauge,
+                poolIds[0],
+                poolIds[1],
+                slippage,
+                data
+            );
     }
 }
