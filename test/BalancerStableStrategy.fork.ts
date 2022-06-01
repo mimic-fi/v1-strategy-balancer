@@ -82,8 +82,8 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
       [priceOracle.address, UNISWAP_V3_ROUTER, UNISWAP_V2_ROUTER, BALANCER_V2_VAULT]
     )
 
-    await swapConnector.setBalancerV2Path(BAL, WETH, POOL_BAL_WETH_ID)
-    await swapConnector.setBalancerV2Path(LDO, WETH, POOL_LDO_WETH_ID)
+    await swapConnector.setBalancerV2Path([BAL, WETH], [POOL_BAL_WETH_ID])
+    await swapConnector.setBalancerV2Path([LDO, WETH], [POOL_LDO_WETH_ID])
 
     vault = await deploy('@mimic-fi/v1-vault/artifacts/contracts/Vault.sol/Vault', [
       maxSlippage,

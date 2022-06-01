@@ -585,13 +585,13 @@
     "@mimic-fi/v1-vault" "0.0.11"
     "@openzeppelin/contracts" "4.1.0"
 
-"@mimic-fi/v1-swap-connector@0.0.1":
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-swap-connector/-/v1-swap-connector-0.0.1.tgz#cfc00ee84308d4f362c369086e04b7eb6b1ad478"
-  integrity sha512-+QUXvXAb7AxgwjC6HVFx+gN7iLox9m6kolE+gypzhuS5jGCpUnMQqo3zMp6zmWo0jQBQ3bC2fwfx//DwCzWR8g==
+"@mimic-fi/v1-swap-connector@0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-swap-connector/-/v1-swap-connector-0.0.2.tgz#e550c9b4eccffb88fe1de5b9a6e2716d49bce472"
+  integrity sha512-q3RMYYp6CxpmbPxvbL5V9ftjiH3HJnOE0KigYmd7FdUU0AoZUHmjSqH+AVJIUYVozIFtIDZ65k4eF0/JNu9XRw==
   dependencies:
     "@mimic-fi/v1-chainlink-price-oracle" "0.0.4"
-    "@mimic-fi/v1-vault" "0.0.6"
+    "@mimic-fi/v1-vault" "0.0.11"
     "@openzeppelin/contracts" "4.1.0"
     "@uniswap/v2-core" "^1.0.1"
     "@uniswap/v2-periphery" "^1.1.0-beta.0"
