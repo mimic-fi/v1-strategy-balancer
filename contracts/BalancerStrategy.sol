@@ -319,9 +319,9 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
      * @dev Claims and invest rewards.
      * @return Current total value after investing all accrued rewards.
      */
-    function claimAndInvest(uint256 suggestedSlippage) external returns (uint256) {
+    function claimAndInvest() external returns (uint256) {
         claim();
-        invest(_token, suggestedSlippage);
+        invest(_token, _slippage);
         return getTotalValue();
     }
 
