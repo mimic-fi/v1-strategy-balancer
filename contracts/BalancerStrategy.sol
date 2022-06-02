@@ -39,6 +39,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
     using PortfoliosData for bytes;
 
     uint256 private constant MAX_SLIPPAGE = 10e16; // 10%
+    uint256 private constant SWAP_THRESHOLD = 10; // 10 wei
     uint256 internal constant VAULT_EXIT_RATIO_PRECISION = 1e18;
     uint256 private constant JOIN_WEIGHTED_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT = 1;
     uint256 private constant EXIT_WEIGHTED_POOL_EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0;
@@ -281,7 +282,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
      * @dev Claims Balancer rewards. All the given rewards that are not the strategy token are swapped for it.
      * After swapping all the rewards for the strategy token, it joins the Balancer pool with the final amount.
      */
-    function claim() public {
+    function claim() public returns (bool success) {
         // Claim BAL rewards
         uint256 balAmount = _balancerMinter.mint(address(_gauge));
         _swap(_balancerToken, _token, balAmount);
@@ -395,6 +396,8 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
         require(tokenIn != tokenOut, 'SWAP_SAME_TOKEN');
 
         uint256 minAmountOut = _getMinAmountOut(tokenIn, tokenOut, amountIn, _slippage);
+        if (minAmountOut < SWAP_THRESHOLD) return;
+
         address swapConnector = _vault.swapConnector();
         tokenIn.safeTransfer(swapConnector, amountIn);
 
