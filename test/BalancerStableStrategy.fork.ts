@@ -152,7 +152,6 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
     const rate = await pool.getRate()
     const stakedBptBalance = await gauge.balanceOf(strategy.address)
     const expectedValue = stakedBptBalance.mul(rate).div(fp(1))
-
     const { invested, shares } = await vault.getAccountInvestment(whale.address, strategy.address)
     expectWithError(invested, expectedValue)
     expectWithError(shares, expectedValue)
@@ -229,8 +228,7 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
 
     // The user should at least have some gains
     const currentBalance = await vault.getAccountBalance(whale.address, weth.address)
-    const minExpectedBalance = JOIN_AMOUNT.mul(exitRatio).div(fp(1))
-    expect(currentBalance.sub(previousBalance)).to.be.gt(minExpectedBalance)
+    expect(currentBalance).to.be.gt(previousBalance)
 
     // There should not be any remaining tokens in the strategy
     const strategyWethBalance = await weth.balanceOf(strategy.address)
@@ -241,10 +239,10 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
     const expectedValue = currentStakedBptBalance.mul(rate).div(fp(1))
     const currentInvestment = await vault.getAccountInvestment(whale.address, strategy.address)
     expectWithError(currentInvestment.invested, expectedValue)
+    expectWithError(currentInvestment.shares, previousInvestment.shares.mul(fp(1).sub(exitRatio)).div(fp(1)))
 
     const strategyShares = await vault.getStrategyShares(strategy.address)
     expectWithError(currentInvestment.shares, strategyShares)
-    expectWithError(currentInvestment.shares, previousInvestment.shares.mul(exitRatio).div(fp(1)))
 
     // TODO: Review rounding issue
     const accountValue = await vault.getAccountCurrentValue(whale.address, strategy.address)
@@ -279,8 +277,7 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
 
     // The user should at least have some gains
     const currentBalance = await vault.getAccountBalance(whale.address, weth.address)
-    const minExpectedBalance = JOIN_AMOUNT.mul(exitRatio).div(fp(1))
-    expect(currentBalance.sub(previousBalance)).to.be.gt(minExpectedBalance)
+    expect(currentBalance).to.be.gt(previousBalance)
 
     // There should not be any remaining tokens in the strategy
     const strategyWethBalance = await weth.balanceOf(strategy.address)
