@@ -14,14 +14,11 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
-
-import './BalancerStrategy.sol';
+import './BalancerNormalStrategy.sol';
 import './balancer/pools/LogExpMath.sol';
 import './balancer/pools/IWeightedPool.sol';
 
-contract BalancerWeightedStrategy is BalancerStrategy {
+contract BalancerWeightedStrategy is BalancerNormalStrategy {
     using FixedPoint for uint256;
 
     constructor(
@@ -33,7 +30,7 @@ contract BalancerWeightedStrategy is BalancerStrategy {
         bytes32 poolId,
         uint256 slippage,
         string memory metadata
-    ) BalancerStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
+    ) BalancerNormalStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

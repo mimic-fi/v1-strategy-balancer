@@ -18,7 +18,7 @@ import '@openzeppelin/contracts/utils/math/SafeCast.sol';
 
 import './BalancerStableStrategy.sol';
 
-contract BalancerBoostedStrategy is BalancerStableStrategy {
+contract BalancerBoostedStrategy is BalancerStrategy {
     using FixedPoint for uint256;
 
     uint256 private constant TOKEN_INDEX = 0;
@@ -38,15 +38,10 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
         bytes32 linearPoolId,
         uint256 slippage,
         string memory metadata
-    ) BalancerStableStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
+    ) BalancerStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
         _linearPoolId = linearPoolId;
         (address linearPoolAddress, ) = balancerVault.getPool(linearPoolId);
         _linearPool = IERC20(linearPoolAddress);
-    }
-
-    receive() external payable {
-        // solhint-disable-previous-line no-empty-blocks
-        revert('UNHANDLED_ETH_PAYMENT');
     }
 
     /**
@@ -56,6 +51,17 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
         return address(_linearPool);
     }
 
+    /**
+     * @dev Tells the exchange rate for a BPT expressed in the strategy token
+     */
+    function getTokenPerBptPrice() public view override returns (uint256) {
+        uint256 rate = IBalancerPool(address(_pool)).getRate();
+        return rate / _tokenScale;
+    }
+
+    /**
+     * @dev Internal function to join the Balancer pool
+     */
     function _joinBalancer(uint256 amount, uint256 slippage) internal override returns (uint256 bptBalance) {
         if (amount == 0) return 0;
 
@@ -88,6 +94,9 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
         _gauge.deposit(bptBalance);
     }
 
+    /**
+     * @dev Internal function to exit the Balancer pool
+     */
     function _exitBalancer(uint256 ratio, uint256 slippage)
         internal
         override
@@ -124,16 +133,16 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
         bptBalance = initialStakedBptBalance.sub(bptAmount);
     }
 
-    function _buildFundsParam() internal view returns (IBalancerVault.FundManagement memory funds) {
+    function _buildFundsParam() private view returns (IBalancerVault.FundManagement memory funds) {
         funds = IBalancerVault.FundManagement({
             sender: address(this),
             fromInternalBalance: false,
-            recipient: payable(this),
+            recipient: payable(address(this)),
             toInternalBalance: false
         });
     }
 
-    function _buildAssetsParam() internal view returns (address[] memory assets) {
+    function _buildAssetsParam() private view returns (address[] memory assets) {
         assets = new address[](3);
         assets[0] = address(_token);
         assets[1] = address(_linearPool);
@@ -147,7 +156,7 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
         uint256 assetInIndex,
         uint256 assetConnectIndex,
         uint256 assetOutIndex
-    ) internal pure returns (IBalancerVault.BatchSwapStep[] memory swaps) {
+    ) private pure returns (IBalancerVault.BatchSwapStep[] memory swaps) {
         swaps = new IBalancerVault.BatchSwapStep[](2);
 
         swaps[0] = IBalancerVault.BatchSwapStep({
@@ -157,6 +166,7 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
             amount: amount,
             userData: new bytes(0)
         });
+
         swaps[1] = IBalancerVault.BatchSwapStep({
             poolId: pool2,
             assetInIndex: assetConnectIndex,
@@ -166,10 +176,5 @@ contract BalancerBoostedStrategy is BalancerStableStrategy {
         });
 
         return swaps;
-    }
-
-    function _getTokenIndex(IERC20) internal pure override returns (uint256) {
-        //Does not matter
-        return 0;
     }
 }
