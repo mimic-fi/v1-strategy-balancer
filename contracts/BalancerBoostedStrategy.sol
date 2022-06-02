@@ -45,10 +45,17 @@ contract BalancerBoostedStrategy is BalancerStrategy {
     }
 
     /**
-     * @dev Tells the address of the Balancer pool associated to the strategy
+     * @dev Tells the address of the Balancer linear pool associated to the strategy
      */
     function getLinearPool() external view returns (address) {
         return address(_linearPool);
+    }
+
+    /**
+     * @dev Tells the ID of the Balancer linear pool associated to the strategy
+     */
+    function getLinearPoolId() external view returns (bytes32) {
+        return _linearPoolId;
     }
 
     /**
