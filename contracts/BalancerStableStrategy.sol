@@ -14,9 +14,9 @@
 
 pragma solidity ^0.8.0;
 
-import './BalancerNormalStrategy.sol';
+import './BalancerSingleStrategy.sol';
 
-contract BalancerStableStrategy is BalancerNormalStrategy {
+contract BalancerStableStrategy is BalancerSingleStrategy {
     constructor(
         IVault vault,
         IERC20 token,
@@ -26,7 +26,7 @@ contract BalancerStableStrategy is BalancerNormalStrategy {
         bytes32 poolId,
         uint256 slippage,
         string memory metadata
-    ) BalancerNormalStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
+    ) BalancerSingleStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

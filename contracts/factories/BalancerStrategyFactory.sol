@@ -43,26 +43,21 @@ abstract contract BalancerStrategyFactory {
         gaugeController = _gaugeAdder.getGaugeController();
     }
 
-    function create(IERC20 token, bytes32[] memory poolIds, uint256 slippage, string memory metadata)
+    function create(IERC20 token, bytes32 poolId, uint256 slippage, string memory metadata)
         external
         returns (BalancerStrategy strategy)
     {
-        require(poolIds.length > 0, 'NO_POOL_ID');
-
-        (address pool, ) = balancerVault.getPool(poolIds[0]);
+        (address pool, ) = balancerVault.getPool(poolId);
         ILiquidityGauge gauge = gaugeAdder.getPoolGauge(IERC20(pool));
         require(gaugeController.gauge_exists(address(gauge)), 'ERR_MISSING_POOL_GAUGE');
 
-        strategy = _create(token, gauge, poolIds, slippage, metadata);
+        strategy = _create(token, gauge, poolId, slippage, metadata);
         strategy.transferOwnership(msg.sender);
         emit StrategyCreated(strategy);
     }
 
-    function _create(
-        IERC20 token,
-        ILiquidityGauge gauge,
-        bytes32[] memory poolIds,
-        uint256 slippage,
-        string memory metadata
-    ) internal virtual returns (BalancerStrategy);
+    function _create(IERC20 token, ILiquidityGauge gauge, bytes32 poolId, uint256 slippage, string memory metadata)
+        internal
+        virtual
+        returns (BalancerStrategy);
 }

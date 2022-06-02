@@ -14,11 +14,11 @@
 
 pragma solidity ^0.8.0;
 
-import './BalancerNormalStrategy.sol';
+import './BalancerSingleStrategy.sol';
 import './balancer/pools/LogExpMath.sol';
 import './balancer/pools/IWeightedPool.sol';
 
-contract BalancerWeightedStrategy is BalancerNormalStrategy {
+contract BalancerWeightedStrategy is BalancerSingleStrategy {
     using FixedPoint for uint256;
 
     constructor(
@@ -30,7 +30,7 @@ contract BalancerWeightedStrategy is BalancerNormalStrategy {
         bytes32 poolId,
         uint256 slippage,
         string memory metadata
-    ) BalancerNormalStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
+    ) BalancerSingleStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

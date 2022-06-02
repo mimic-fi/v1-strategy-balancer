@@ -15,7 +15,9 @@
 pragma solidity ^0.8.0;
 
 import './BalancerStrategyFactory.sol';
+import '../BalancerStrategy.sol';
 import '../BalancerBoostedStrategy.sol';
+import '../balancer/pools/IBalancerLinearPool.sol';
 
 contract BalancerBoostedStrategyFactory is BalancerStrategyFactory {
     constructor(IVault _vault, IBalancerVault _balancerVault, IBalancerMinter _balancerMinter, IGaugeAdder _gaugeAdder)
@@ -24,15 +26,12 @@ contract BalancerBoostedStrategyFactory is BalancerStrategyFactory {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function _create(
-        IERC20 token,
-        ILiquidityGauge gauge,
-        bytes32[] memory poolIds,
-        uint256 slippage,
-        string memory data
-    ) internal override returns (BalancerStrategy) {
-        require(poolIds.length == 2, 'INVALID_POOL_IDS_LENGTH');
-
+    function _create(IERC20 token, ILiquidityGauge gauge, bytes32 poolId, uint256 slippage, string memory data)
+        internal
+        override
+        returns (BalancerStrategy)
+    {
+        bytes32 linearPoolId = _getLinearPoolId(poolId, token);
         return
             new BalancerBoostedStrategy(
                 vault,
@@ -40,10 +39,25 @@ contract BalancerBoostedStrategyFactory is BalancerStrategyFactory {
                 balancerVault,
                 balancerMinter,
                 gauge,
-                poolIds[0],
-                poolIds[1],
+                poolId,
+                linearPoolId,
                 slippage,
                 data
             );
+    }
+
+    function _getLinearPoolId(bytes32 poolId, IERC20 token) private view returns (bytes32) {
+        (address pool, ) = balancerVault.getPool(poolId);
+        require(pool != address(0), 'INVALID_BALANCER_POOL_ID');
+        (IERC20[] memory tokens, , ) = balancerVault.getPoolTokens(poolId);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (address(tokens[i]) != pool) {
+                IBalancerLinearPool linearPool = IBalancerLinearPool(address(tokens[i]));
+                if (linearPool.getMainToken() == address(token)) {
+                    return linearPool.getPoolId();
+                }
+            }
+        }
+        revert('LINEAR_POOL_ID_NOT_FOUND');
     }
 }

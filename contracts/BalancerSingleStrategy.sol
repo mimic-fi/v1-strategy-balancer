@@ -16,7 +16,7 @@ pragma solidity ^0.8.0;
 
 import './BalancerStrategy.sol';
 
-abstract contract BalancerNormalStrategy is BalancerStrategy {
+abstract contract BalancerSingleStrategy is BalancerStrategy {
     using FixedPoint for uint256;
 
     uint256 private constant JOIN_WEIGHTED_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT = 1;

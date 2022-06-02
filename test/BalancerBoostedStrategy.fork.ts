@@ -106,9 +106,7 @@ describe('BalancerBoostedStrategy - bb-a-USDT bb-a-DAI bb-a-USDC', function () {
       BALANCER_MINTER,
       GAUGE_ADDER,
     ])
-    const createTx = await factory
-      .connect(owner)
-      .create(USDC, [POOL_DAI_USDC_USDT_ID, LINEAR_POOL_USDC_ID], SLIPPAGE, 'metadata')
+    const createTx = await factory.connect(owner).create(USDC, POOL_DAI_USDC_USDT_ID, SLIPPAGE, 'metadata')
     const { args } = await assertEvent(createTx, 'StrategyCreated')
     strategy = await instanceAt('BalancerBoostedStrategy', args.strategy)
   })
@@ -165,7 +163,7 @@ describe('BalancerBoostedStrategy - bb-a-USDT bb-a-DAI bb-a-USDC', function () {
     expectWithError(accountValue, strategyShares.mul(strategyShareValue).div(bn(1e18)))
   })
 
-  it('accrues BAL and LDO earnings over time', async () => {
+  it('accrues BAL earnings over time', async () => {
     const initialBalEarnings = await gauge.claimable_tokens(strategy.address)
     expect(initialBalEarnings).to.be.lt(100)
 

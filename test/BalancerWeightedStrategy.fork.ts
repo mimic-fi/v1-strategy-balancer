@@ -92,7 +92,7 @@ describe('BalancerWeightedStrategy - wETH/wBTC', function () {
     const libraries = { LogExpMath: (await deploy('LogExpMath')).address }
     const factory = await deploy('BalancerWeightedStrategyFactory', args, whale, libraries)
 
-    const createTx = await factory.connect(owner).create(WETH, [POOL_WBTC_WETH_ID], SLIPPAGE, 'metadata')
+    const createTx = await factory.connect(owner).create(WETH, POOL_WBTC_WETH_ID, SLIPPAGE, 'metadata')
     const event = await assertEvent(createTx, 'StrategyCreated')
     strategy = await instanceAt('BalancerWeightedStrategy', event.args.strategy)
   })

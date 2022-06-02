@@ -24,23 +24,11 @@ contract BalancerWeightedStrategyFactory is BalancerStrategyFactory {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function _create(
-        IERC20 token,
-        ILiquidityGauge gauge,
-        bytes32[] memory poolIds,
-        uint256 slippage,
-        string memory data
-    ) internal override returns (BalancerStrategy) {
-        return
-            new BalancerWeightedStrategy(
-                vault,
-                token,
-                balancerVault,
-                balancerMinter,
-                gauge,
-                poolIds[0],
-                slippage,
-                data
-            );
+    function _create(IERC20 token, ILiquidityGauge gauge, bytes32 poolId, uint256 slippage, string memory data)
+        internal
+        override
+        returns (BalancerStrategy)
+    {
+        return new BalancerWeightedStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, data);
     }
 }

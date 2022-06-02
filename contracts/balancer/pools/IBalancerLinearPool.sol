@@ -14,12 +14,8 @@
 
 pragma solidity ^0.8.0;
 
-interface IBalancerPool {
-    function getPoolId() external view returns (bytes32);
+import './IBalancerPool.sol';
 
-    function getRate() external view returns (uint256);
-
-    function balanceOf(address account) external view returns (uint256);
-
-    function approve(address spender, uint256 amount) external returns (bool);
+interface IBalancerLinearPool is IBalancerPool {
+    function getMainToken() external view returns (address);
 }

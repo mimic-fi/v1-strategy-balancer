@@ -102,7 +102,7 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
       BALANCER_MINTER,
       GAUGE_ADDER,
     ])
-    const createTx = await factory.connect(owner).create(WETH, [POOL_wstETH_ETH_ID], SLIPPAGE, 'metadata')
+    const createTx = await factory.connect(owner).create(WETH, POOL_wstETH_ETH_ID, SLIPPAGE, 'metadata')
     const { args } = await assertEvent(createTx, 'StrategyCreated')
     strategy = await instanceAt('BalancerStableStrategy', args.strategy)
   })
