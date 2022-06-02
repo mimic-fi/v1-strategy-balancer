@@ -8,7 +8,7 @@ import {
   impersonate,
   instanceAt,
   MAX_UINT256,
-  MONTH,
+  WEEK,
 } from '@mimic-fi/v1-helpers'
 import { encodeSlippage } from '@mimic-fi/v1-portfolios/dist/helpers/encoding'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
@@ -24,7 +24,6 @@ const WSTETH = '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0'
 const WHALE_WITH_WETH = '0x4a18a50a8328b42773268B4b436254056b7d70CE'
 
 const GAUGE_ADDER = '0xed5ba579bb5d516263ff6e1c10fcac1040075fe2'
-const BALANCER_VAULT = '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
 const BALANCER_MINTER = '0x239e55F427D44C3cc793f49bFB507ebe76638a2b'
 
 const POOL_BAL_WETH_ID = '0x5c6ee304399dbdb9c8ef030ab642b10820db8f56000200000000000000000014'
@@ -54,7 +53,7 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
 
   before('load signers', async () => {
     // eslint-disable-next-line prettier/prettier
-    [owner, trader] = await getSigners(2)
+    [, owner, trader] = await getSigners()
     owner = await impersonate(owner.address, fp(100))
     whale = await impersonate(WHALE_WITH_WETH, fp(100))
   })
@@ -98,13 +97,13 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
   before('deploy strategy', async () => {
     const factory = await deploy('BalancerStableStrategyFactory', [
       vault.address,
-      BALANCER_VAULT,
+      BALANCER_V2_VAULT,
       BALANCER_MINTER,
       GAUGE_ADDER,
     ])
-    const createTx = await factory.connect(owner).create(WETH, POOL_wstETH_ETH_ID, SLIPPAGE, 'metadata')
+    const createTx = await factory.connect(owner).create(WETH, POOL_wstETH_ETH_ID, SLIPPAGE, 'metadata:uri')
     const { args } = await assertEvent(createTx, 'StrategyCreated')
-    strategy = await instanceAt('BalancerWeightedStrategy', args.strategy)
+    strategy = await instanceAt('BalancerStableStrategy', args.strategy)
   })
 
   before('load dependencies', async () => {
@@ -113,7 +112,7 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
     wstEth = await instanceAt('IERC20', WSTETH)
     pool = await instanceAt('IBalancerPool', await strategy.getPool())
     gauge = await instanceAt('ILiquidityGauge', await strategy.getGauge())
-    balancerVault = await instanceAt('IBalancerVault', BALANCER_VAULT)
+    balancerVault = await instanceAt('IBalancerVault', BALANCER_V2_VAULT)
   })
 
   before('deposit tokens', async () => {
@@ -121,13 +120,38 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
     await vault.connect(whale).deposit(whale.address, weth.address, fp(100), '0x')
   })
 
-  it('has the correct owner', async () => {
+  it('deploys the strategy correctly', async () => {
+    expect(await strategy.getVault()).to.be.equal(vault.address)
+    expect(await strategy.getToken()).to.be.equal(WETH)
+    expect(await strategy.getTokenScale()).to.be.equal(1)
+    expect(await strategy.getGauge()).to.be.equal(gauge.address)
+    expect(await strategy.getPool()).to.be.equal(pool.address)
+    expect(await strategy.getPoolId()).to.be.equal(POOL_wstETH_ETH_ID)
+    expect(await strategy.getBalancerVault()).to.be.equal(BALANCER_V2_VAULT)
+    expect(await strategy.getSlippage()).to.be.equal(SLIPPAGE)
+    expect(await strategy.getMetadataURI()).to.be.equal('metadata:uri')
+    expect(await strategy.getTotalValue()).to.be.equal(0)
+    expect(await strategy.getValueRate()).to.be.equal(fp(1))
     expect(await strategy.owner()).to.be.equal(owner.address)
   })
 
-  it('sets metadata', async () => {
-    await strategy.connect(owner).setMetadataURI('metadata:uri:2.0')
-    expect(await strategy.getMetadataURI()).to.be.equal('metadata:uri:2.0')
+  it('allows the owner to set a new metadata', async () => {
+    const newMetadata = 'metadata:uri:2.0'
+
+    await strategy.connect(owner).setMetadataURI(newMetadata)
+    expect(await strategy.getMetadataURI()).to.be.equal(newMetadata)
+
+    await expect(strategy.setMetadataURI(newMetadata)).to.be.revertedWith('Ownable: caller is not the owner')
+  })
+
+  it('allows the owner to set a new slippage', async () => {
+    const currentSlippage = await strategy.getSlippage()
+    const newSlippage = currentSlippage.add(1)
+
+    await strategy.connect(owner).setSlippage(newSlippage)
+    expect(await strategy.getSlippage()).to.be.equal(newSlippage)
+
+    await expect(strategy.setSlippage(newSlippage)).to.be.revertedWith('Ownable: caller is not the owner')
   })
 
   it('joins strategy', async () => {
@@ -171,7 +195,7 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
     const initialLdoEarnings = await gauge.claimable_reward(strategy.address, ldo.address)
     expect(initialLdoEarnings).to.be.lt(100)
 
-    await advanceTime(MONTH)
+    await advanceTime(WEEK)
 
     const currentBalEarnings = await gauge.claimable_tokens(strategy.address)
     expect(currentBalEarnings).to.be.gt(initialBalEarnings)
