@@ -18,6 +18,8 @@ import { BigNumber, Contract } from 'ethers'
 /* eslint-disable no-secrets/no-secrets */
 
 const BAL = '0xba100000625a3754423978a60c9317c58a424e3d'
+const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
 const WHALE_WITH_USDC = '0x55fe002aeff02f77364de339a1292923a15844b8'
 
@@ -25,6 +27,9 @@ const GAUGE_ADDER = '0xed5ba579bb5d516263ff6e1c10fcac1040075fe2'
 const BALANCER_VAULT = '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
 const BALANCER_MINTER = '0x239e55F427D44C3cc793f49bFB507ebe76638a2b'
 
+const POOL_BAL_WETH_ID = '0x5c6ee304399dbdb9c8ef030ab642b10820db8f56000200000000000000000014'
+const POOL_DAI_WETH_ID = '0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a'
+const POOL_DAI_USDC_ID = '0x06df3b2bbb68adc8b0e302443692037ed9f91b42000000000000000000000063'
 const POOL_DAI_USDC_USDT_ID = '0x7b50775383d3d6f0215a8f290f2c9e2eebbeceb20000000000000000000000fe'
 const LINEAR_POOL_USDC_ID = '0x9210f1204b5a24742eba12f710636d76240df3d00000000000000000000000fc'
 
@@ -77,6 +82,11 @@ describe('BalancerBoostedStrategy - bb-a-USDT bb-a-DAI bb-a-USDC', function () {
     const swapConnector = await deploy(
       '@mimic-fi/v1-swap-connector/artifacts/contracts/SwapConnector.sol/SwapConnector',
       [priceOracle.address, UNISWAP_V3_ROUTER, UNISWAP_V2_ROUTER, BALANCER_V2_VAULT]
+    )
+
+    await swapConnector.setBalancerV2Path(
+      [BAL, WETH, DAI, USDC],
+      [POOL_BAL_WETH_ID, POOL_DAI_WETH_ID, POOL_DAI_USDC_ID]
     )
 
     vault = await deploy('@mimic-fi/v1-vault/artifacts/contracts/Vault.sol/Vault', [
@@ -244,8 +254,7 @@ describe('BalancerBoostedStrategy - bb-a-USDT bb-a-DAI bb-a-USDC', function () {
 
     // The user should at least have some gains
     const currentBalance = await vault.getAccountBalance(whale.address, usdc.address)
-    const minExpectedBalance = JOIN_AMOUNT.mul(exitRatio).div(bn(1e18))
-    expect(currentBalance.sub(previousBalance)).to.be.gt(minExpectedBalance)
+    expect(currentBalance).to.be.gt(previousBalance)
 
     // There should not be any remaining tokens in the strategy
     const strategyUsdcBalance = await usdc.balanceOf(strategy.address)
@@ -294,8 +303,7 @@ describe('BalancerBoostedStrategy - bb-a-USDT bb-a-DAI bb-a-USDC', function () {
 
     // The user should at least have some gains
     const currentBalance = await vault.getAccountBalance(whale.address, usdc.address)
-    const minExpectedBalance = JOIN_AMOUNT.mul(exitRatio).div(bn(1e18))
-    expect(currentBalance.sub(previousBalance)).to.be.gt(minExpectedBalance)
+    expect(currentBalance).to.be.gt(previousBalance)
 
     // There should not be any remaining tokens in the strategy
     const strategyUsdcBalance = await usdc.balanceOf(strategy.address)

@@ -282,7 +282,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
      * @dev Claims Balancer rewards. All the given rewards that are not the strategy token are swapped for it.
      * After swapping all the rewards for the strategy token, it joins the Balancer pool with the final amount.
      */
-    function claim() public returns (bool success) {
+    function claim() public {
         // Claim BAL rewards
         uint256 balAmount = _balancerMinter.mint(address(_gauge));
         _swap(_balancerToken, _token, balAmount);
