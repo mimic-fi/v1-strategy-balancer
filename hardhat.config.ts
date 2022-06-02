@@ -23,6 +23,6 @@ export default {
     },
   },
   mocha: {
-    timeout: 120000,
+    timeout: 40000,
   },
 }
