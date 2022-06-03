@@ -125,7 +125,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
     }
 
     /**
-     * @dev Tell the slippage
+     * @dev Tell the slippage used to swap rewards
      */
     function getSlippage() external view returns (uint256) {
         return _slippage;
@@ -160,7 +160,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
     }
 
     /**
-     * @dev Tells the pool token that will be used as the strategy entry point
+     * @dev Tells the token that will be used as the strategy entry point
      */
     function getToken() external view override returns (address) {
         return address(_token);
