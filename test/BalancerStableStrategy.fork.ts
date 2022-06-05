@@ -27,7 +27,6 @@ const GAUGE_ADDER = '0xed5ba579bb5d516263ff6e1c10fcac1040075fe2'
 const BALANCER_MINTER = '0x239e55F427D44C3cc793f49bFB507ebe76638a2b'
 
 const POOL_BAL_WETH_ID = '0x5c6ee304399dbdb9c8ef030ab642b10820db8f56000200000000000000000014'
-const POOL_LDO_WETH_ID = '0xbf96189eee9357a95c7719f4f5047f76bde804e5000200000000000000000087'
 const POOL_wstETH_ETH_ID = '0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080'
 
 const UNISWAP_V2_ROUTER = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
@@ -82,7 +81,7 @@ describe('BalancerStableStrategy - WETH/wstETH', function () {
     )
 
     await swapConnector.setBalancerV2Path([BAL, WETH], [POOL_BAL_WETH_ID])
-    await swapConnector.setBalancerV2Path([LDO, WETH], [POOL_LDO_WETH_ID])
+    await swapConnector.setUniswapV3Path([LDO, WETH], [10000])
 
     vault = await deploy('@mimic-fi/v1-vault/artifacts/contracts/Vault.sol/Vault', [
       maxSlippage,
