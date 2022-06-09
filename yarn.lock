@@ -568,10 +568,10 @@
     "@mimic-fi/v1-vault" "0.0.6"
     "@openzeppelin/contracts" "^4.1.0"
 
-"@mimic-fi/v1-helpers@^0.0.9":
-  version "0.0.9"
-  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-helpers/-/v1-helpers-0.0.9.tgz#16e96dc651acc7c928c3ae60a2a57384d00c150e"
-  integrity sha512-xMIh7kbsjHbMmrbMKP6IjuUuEc0rC1tSbNgbNRBTALwVEivzDi3ZsSpSs/TR/d4DKSYcTFVbiPjMfrIqLXVCsw==
+"@mimic-fi/v1-helpers@0.0.10":
+  version "0.0.10"
+  resolved "https://registry.yarnpkg.com/@mimic-fi/v1-helpers/-/v1-helpers-0.0.10.tgz#cb7d3eab2b404e17b9a8b9ce407abe05735d8b3b"
+  integrity sha512-mGbwLMe2EgKdCoW8Y73EFR9h4NuS5IgKVdkuyk5oR46KyTsAoVOLu7lhm/jdA5xjoLj24DeIQR/56HH/n4taow==
   dependencies:
     "@nomiclabs/hardhat-ethers" "^2.0.2"
     decimal.js "^10.3.1"

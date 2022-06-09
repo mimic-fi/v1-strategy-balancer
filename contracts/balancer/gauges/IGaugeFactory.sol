@@ -14,8 +14,8 @@
 
 pragma solidity ^0.8.0;
 
-// solhint-disable func-name-mixedcase
+import './IGauge.sol';
 
-interface IGaugeController {
-    function gauge_exists(address addr) external returns (bool);
+interface IGaugeFactory {
+    function getPoolGauge(IERC20 pool) external view returns (IGauge);
 }

@@ -27,14 +27,15 @@ abstract contract BalancerSingleStrategy is BalancerStrategy {
 
     constructor(
         IVault vault,
-        IERC20 token,
         IBalancerVault balancerVault,
         IBalancerMinter balancerMinter,
-        ILiquidityGauge gauge,
+        IERC20 token,
         bytes32 poolId,
+        IGauge gauge,
+        IGauge.Type gaugeType,
         uint256 slippage,
         string memory metadata
-    ) BalancerStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
+    ) BalancerStrategy(vault, balancerVault, balancerMinter, token, poolId, gauge, gaugeType, slippage, metadata) {
         _tokenIndex = _getTokenIndex(token);
     }
 

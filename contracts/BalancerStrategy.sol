@@ -32,6 +32,7 @@ import './balancer/IBalancerVault.sol';
 import './balancer/pools/IBalancerPool.sol';
 import './balancer/gauges/IBalancerMinter.sol';
 import './balancer/gauges/ILiquidityGauge.sol';
+import './balancer/gauges/IRewardOnlyGauge.sol';
 
 abstract contract BalancerStrategy is IStrategy, Ownable {
     using FixedPoint for uint256;
@@ -62,8 +63,11 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
     // Balancer Minter reference
     IBalancerMinter internal immutable _balancerMinter;
 
-    // Liquidity gauge associated to the Balancer pool
-    ILiquidityGauge internal immutable _gauge;
+    // Gauge associated to the Balancer pool
+    IGauge internal immutable _gauge;
+
+    // Gauge type of the pool
+    IGauge.Type internal immutable _gaugeType;
 
     // Balancer V2's internal identifier for the Balancer pool
     bytes32 internal immutable _poolId;
@@ -87,27 +91,31 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
 
     constructor(
         IVault vault,
-        IERC20 token,
         IBalancerVault balancerVault,
         IBalancerMinter balancerMinter,
-        ILiquidityGauge gauge,
+        IERC20 token,
         bytes32 poolId,
+        IGauge gauge,
+        IGauge.Type gaugeType,
         uint256 slippage,
         string memory metadataURI
     ) {
+        (address poolAddress, ) = balancerVault.getPool(poolId);
+        require(poolAddress != address(0), 'MISSING_BALANCER_POOL');
+        _pool = IERC20(poolAddress);
+
         _vault = vault;
-        _token = token;
         _balancerVault = balancerVault;
         _balancerMinter = balancerMinter;
-        _balancerToken = balancerMinter.getBalancerToken();
-        _gauge = gauge;
+        _balancerToken = address(balancerMinter) == address(0) ? IERC20(address(0)) : balancerMinter.getBalancerToken();
+        _token = token;
         _poolId = poolId;
+        _gauge = gauge;
+        _gaugeType = gaugeType;
         _setSlippage(slippage);
         _setMetadataURI(metadataURI);
         _setTokens(balancerVault, poolId);
         _tokenScale = _getTokenScale(token);
-        (address poolAddress, ) = balancerVault.getPool(poolId);
-        _pool = IERC20(poolAddress);
     }
 
     /**
@@ -270,13 +278,24 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
      * After swapping all the rewards for the strategy token, it joins the Balancer pool with the final amount.
      */
     function claim() public {
-        // Claim BAL rewards
-        uint256 balAmount = _balancerMinter.mint(address(_gauge));
-        _swap(_balancerToken, _token, balAmount);
+        // Claim BAL rewards through Balancer Minter if it was set
+        if (_balancerMinter != IBalancerMinter(address(0))) {
+            uint256 balAmount = _balancerMinter.mint(address(_gauge));
+            _swap(_balancerToken, _token, balAmount);
+        }
+
+        // Fetch rewards count based on gauge type
+        uint256 rewards;
+        if (_gaugeType == IGauge.Type.Liquidity) {
+            rewards = ILiquidityGauge(address(_gauge)).reward_count();
+        } else {
+            IRewardOnlyContract rewardContract = IRewardOnlyGauge(address(_gauge)).reward_contract();
+            rewards = rewardContract.reward_count();
+            rewardContract.get_reward();
+        }
 
         // Claim other token rewards
-        _gauge.claim_rewards(address(this));
-        uint256 rewards = _gauge.reward_count();
+        _gauge.claim_rewards();
         for (uint256 i = 0; i < rewards; i++) {
             IERC20 rewardsToken = _gauge.reward_tokens(i);
             if (rewardsToken != _token && rewardsToken != _pool) {

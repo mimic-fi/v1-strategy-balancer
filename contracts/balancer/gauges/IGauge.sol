@@ -14,13 +14,27 @@
 
 pragma solidity ^0.8.0;
 
-import './ILiquidityGauge.sol';
-import './IGaugeController.sol';
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-interface IGaugeAdder {
-    function getVault() external view returns (address);
+// solhint-disable func-name-mixedcase
 
-    function getGaugeController() external view returns (IGaugeController);
+interface IGauge {
+    enum Type {
+        Liquidity,
+        RewardsOnly
+    }
 
-    function getPoolGauge(IERC20 pool) external view returns (ILiquidityGauge);
+    function deposit(uint256 value) external;
+
+    function withdraw(uint256 value) external;
+
+    function claim_rewards() external;
+
+    function lp_token() external view returns (IERC20);
+
+    function reward_tokens(uint256 i) external view returns (IERC20);
+
+    function balanceOf(address user) external view returns (uint256);
+
+    function claimable_reward(address user, address token) external view returns (uint256);
 }
