@@ -14,5 +14,3 @@ echo "
   }
 }
 " > $HOME/.hardhat/networks.mimic.json
-
-cat $HOME/.hardhat/networks.mimic.json
