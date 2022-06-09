@@ -1,0 +1,10 @@
+{
+  "networks": {
+    "mainnet": {
+      "url": "{{mainnet}}"
+    },
+    "polygon": {
+      "url": "{{polygon}}"
+    }
+  }
+}
