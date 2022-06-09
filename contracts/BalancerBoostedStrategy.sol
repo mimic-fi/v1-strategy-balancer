@@ -30,15 +30,16 @@ contract BalancerBoostedStrategy is BalancerStrategy {
 
     constructor(
         IVault vault,
-        IERC20 token,
         IBalancerVault balancerVault,
         IBalancerMinter balancerMinter,
-        ILiquidityGauge gauge,
+        IERC20 token,
         bytes32 poolId,
         bytes32 linearPoolId,
+        IGauge gauge,
+        IGauge.Type gaugeType,
         uint256 slippage,
         string memory metadata
-    ) BalancerStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
+    ) BalancerStrategy(vault, balancerVault, balancerMinter, token, poolId, gauge, gaugeType, slippage, metadata) {
         _linearPoolId = linearPoolId;
         (address linearPoolAddress, ) = balancerVault.getPool(linearPoolId);
         _linearPool = IERC20(linearPoolAddress);

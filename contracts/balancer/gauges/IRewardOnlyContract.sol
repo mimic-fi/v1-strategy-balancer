@@ -16,8 +16,10 @@ pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-interface IBalancerMinter {
-    function getBalancerToken() external view returns (IERC20);
+// solhint-disable func-name-mixedcase
 
-    function mint(address gauge) external returns (uint256);
+interface IRewardOnlyContract {
+    function get_reward() external;
+
+    function reward_count() external view returns (uint256);
 }

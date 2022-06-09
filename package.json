@@ -12,7 +12,8 @@
     "lint:solidity": "solhint 'contracts/**/*.sol' --config ./node_modules/solhint-config-mimic/index.js",
     "lint:typescript": "eslint . --ext .ts",
     "test": "hardhat test ./test/*.ts",
-    "test:fork": "yarn test --fork mainnet --block-number 14797500"
+    "test:mainnet": "yarn test --fork mainnet --block-number 14797500",
+    "test:polygon": "yarn test --fork polygon --block-number 29355855"
   },
   "dependencies": {
     "@mimic-fi/v1-chainlink-price-oracle": "0.0.4",
@@ -22,7 +23,7 @@
     "@openzeppelin/contracts": "4.1.0"
   },
   "devDependencies": {
-    "@mimic-fi/v1-helpers": "^0.0.9",
+    "@mimic-fi/v1-helpers": "0.0.10",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@types/chai": "^4.2.18",

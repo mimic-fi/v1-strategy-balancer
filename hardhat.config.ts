@@ -9,7 +9,7 @@ import { task } from 'hardhat/config'
 import { homedir } from 'os'
 import path from 'path'
 
-task(TASK_COMPILE).setAction(overrideFunctions(['claimable_tokens', 'claimAndInvest']))
+task(TASK_COMPILE).setAction(overrideFunctions(['claimable_tokens', 'claimable_reward_write', 'claimAndInvest']))
 
 export default {
   localNetworksConfig: path.join(homedir(), '/.hardhat/networks.mimic.json'),
@@ -23,6 +23,6 @@ export default {
     },
   },
   mocha: {
-    timeout: 40000,
+    timeout: 60000,
   },
 }

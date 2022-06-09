@@ -19,14 +19,27 @@ import './BalancerSingleStrategy.sol';
 contract BalancerStableStrategy is BalancerSingleStrategy {
     constructor(
         IVault vault,
-        IERC20 token,
         IBalancerVault balancerVault,
         IBalancerMinter balancerMinter,
-        ILiquidityGauge gauge,
+        IERC20 token,
         bytes32 poolId,
+        IGauge gauge,
+        IGauge.Type gaugeType,
         uint256 slippage,
         string memory metadata
-    ) BalancerSingleStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, metadata) {
+    )
+        BalancerSingleStrategy(
+            vault,
+            balancerVault,
+            balancerMinter,
+            token,
+            poolId,
+            gauge,
+            gaugeType,
+            slippage,
+            metadata
+        )
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 

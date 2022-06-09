@@ -18,17 +18,32 @@ import './BalancerStrategyFactory.sol';
 import '../BalancerStableStrategy.sol';
 
 contract BalancerStableStrategyFactory is BalancerStrategyFactory {
-    constructor(IVault _vault, IBalancerVault _balancerVault, IBalancerMinter _balancerMinter, IGaugeAdder _gaugeAdder)
-        BalancerStrategyFactory(_vault, _balancerVault, _balancerMinter, _gaugeAdder)
-    {
+    constructor(
+        IVault _vault,
+        IBalancerVault _balancerVault,
+        IBalancerMinter _balancerMinter,
+        IGaugeFactory _gaugeFactory,
+        IGauge.Type _gaugeType
+    ) BalancerStrategyFactory(_vault, _balancerVault, _balancerMinter, _gaugeFactory, _gaugeType) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function _create(IERC20 token, ILiquidityGauge gauge, bytes32 poolId, uint256 slippage, string memory data)
+    function _create(IERC20 token, bytes32 poolId, IGauge gauge, uint256 slippage, string memory data)
         internal
         override
         returns (BalancerStrategy)
     {
-        return new BalancerStableStrategy(vault, token, balancerVault, balancerMinter, gauge, poolId, slippage, data);
+        return
+            new BalancerStableStrategy(
+                vault,
+                balancerVault,
+                balancerMinter,
+                token,
+                poolId,
+                gauge,
+                gaugeType,
+                slippage,
+                data
+            );
     }
 }

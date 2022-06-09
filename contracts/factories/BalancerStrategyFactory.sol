@@ -19,7 +19,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 
 import '../balancer/IBalancerVault.sol';
 import '../balancer/gauges/IBalancerMinter.sol';
-import '../balancer/gauges/IGaugeAdder.sol';
+import '../balancer/gauges/IGaugeFactory.sol';
 import '../BalancerStrategy.sol';
 
 abstract contract BalancerStrategyFactory {
@@ -27,20 +27,22 @@ abstract contract BalancerStrategyFactory {
 
     IVault public immutable vault;
     IBalancerVault public immutable balancerVault;
-    IGaugeAdder public immutable gaugeAdder;
     IBalancerMinter public immutable balancerMinter;
-    IGaugeController public immutable gaugeController;
+    IGaugeFactory public immutable gaugeFactory;
+    IGauge.Type public immutable gaugeType;
 
-    constructor(IVault _vault, IBalancerVault _balancerVault, IBalancerMinter _balancerMinter, IGaugeAdder _gaugeAdder)
-    {
-        require(_gaugeAdder.getVault() == address(_balancerVault), 'ERR_WRONG_GAUGE_ADDER');
-        require(_gaugeAdder.getGaugeController() == _balancerMinter.getGaugeController(), 'ERR_WRONG_BALANCER_MINTER');
-
+    constructor(
+        IVault _vault,
+        IBalancerVault _balancerVault,
+        IBalancerMinter _balancerMinter,
+        IGaugeFactory _gaugeFactory,
+        IGauge.Type _gaugeType
+    ) {
         vault = _vault;
         balancerVault = _balancerVault;
         balancerMinter = _balancerMinter;
-        gaugeAdder = _gaugeAdder;
-        gaugeController = _gaugeAdder.getGaugeController();
+        gaugeFactory = _gaugeFactory;
+        gaugeType = _gaugeType;
     }
 
     function create(IERC20 token, bytes32 poolId, uint256 slippage, string memory metadata)
@@ -48,15 +50,15 @@ abstract contract BalancerStrategyFactory {
         returns (BalancerStrategy strategy)
     {
         (address pool, ) = balancerVault.getPool(poolId);
-        ILiquidityGauge gauge = gaugeAdder.getPoolGauge(IERC20(pool));
-        require(gaugeController.gauge_exists(address(gauge)), 'ERR_MISSING_POOL_GAUGE');
+        IGauge gauge = gaugeFactory.getPoolGauge(IERC20(pool));
+        require(address(gauge) != address(0), 'MISSING_POOL_GAUGE');
 
-        strategy = _create(token, gauge, poolId, slippage, metadata);
+        strategy = _create(token, poolId, gauge, slippage, metadata);
         strategy.transferOwnership(msg.sender);
         emit StrategyCreated(strategy);
     }
 
-    function _create(IERC20 token, ILiquidityGauge gauge, bytes32 poolId, uint256 slippage, string memory metadata)
+    function _create(IERC20 token, bytes32 poolId, IGauge gauge, uint256 slippage, string memory metadata)
         internal
         virtual
         returns (BalancerStrategy);
