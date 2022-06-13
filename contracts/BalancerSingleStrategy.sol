@@ -16,15 +16,34 @@ pragma solidity ^0.8.0;
 
 import './BalancerStrategy.sol';
 
+/**
+ * @title BalancerSingleStrategy
+ * @dev This strategy provides liquidity in Balancer pools through joins.
+ */
 abstract contract BalancerSingleStrategy is BalancerStrategy {
     using FixedPoint for uint256;
 
-    uint256 private constant JOIN_WEIGHTED_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT = 1;
-    uint256 private constant EXIT_WEIGHTED_POOL_EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0;
+    // ID of the action type used internally by Balancer in order to join a Balancer pool
+    uint256 private constant JOIN_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT = 1;
+
+    // ID of the action type used internally by Balancer in order to exit a Balancer pool
+    uint256 private constant EXIT_POOL_EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0;
 
     // Index of the entry point token in the list of tokens of the Balancer pool
     uint256 internal immutable _tokenIndex;
 
+    /**
+     * @dev Initializes the Balancer strategy contract
+     * @param vault Protocol vault reference
+     * @param balancerVault Balancer V2 Vault reference
+     * @param balancerMinter Balancer Minter reference
+     * @param token Token to be used as the strategy entry point
+     * @param poolId Id of the Balancer pool to create the strategy for
+     * @param gauge Address of the gauge associated to the pool to be used
+     * @param gaugeType Type of the gauges created by the associated factory: liquidity or rewards only
+     * @param slippage Slippage value to be used in order to swap rewards
+     * @param metadataURI Metadata URI associated to the strategy
+     */
     constructor(
         IVault vault,
         IBalancerVault balancerVault,
@@ -34,8 +53,8 @@ abstract contract BalancerSingleStrategy is BalancerStrategy {
         IGauge gauge,
         IGauge.Type gaugeType,
         uint256 slippage,
-        string memory metadata
-    ) BalancerStrategy(vault, balancerVault, balancerMinter, token, poolId, gauge, gaugeType, slippage, metadata) {
+        string memory metadataURI
+    ) BalancerStrategy(vault, balancerVault, balancerMinter, token, poolId, gauge, gaugeType, slippage, metadataURI) {
         _tokenIndex = _getTokenIndex(token);
     }
 
@@ -48,6 +67,8 @@ abstract contract BalancerSingleStrategy is BalancerStrategy {
 
     /**
      * @dev Internal function to join the Balancer pool
+     * @param amount Amount of strategy tokens to invest
+     * @param slippage Slippage to be used to join the Balancer pool
      */
     function _joinBalancer(uint256 amount, uint256 slippage) internal override returns (uint256 bptBalance) {
         if (amount == 0) return 0;
@@ -61,7 +82,7 @@ abstract contract BalancerSingleStrategy is BalancerStrategy {
         IBalancerVault.JoinPoolRequest memory request = IBalancerVault.JoinPoolRequest({
             assets: tokens,
             maxAmountsIn: amountsIn,
-            userData: abi.encode(JOIN_WEIGHTED_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minimumBpt),
+            userData: abi.encode(JOIN_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minimumBpt),
             fromInternalBalance: false
         });
 
@@ -77,6 +98,8 @@ abstract contract BalancerSingleStrategy is BalancerStrategy {
 
     /**
      * @dev Internal function to exit the Balancer pool
+     * @param ratio Ratio of the invested position to exit
+     * @param slippage Slippage to be used to exit the Balancer pool
      */
     function _exitBalancer(uint256 ratio, uint256 slippage)
         internal
@@ -98,7 +121,7 @@ abstract contract BalancerSingleStrategy is BalancerStrategy {
         IBalancerVault.ExitPoolRequest memory request = IBalancerVault.ExitPoolRequest({
             assets: tokens,
             minAmountsOut: minAmountsOut,
-            userData: abi.encodePacked(EXIT_WEIGHTED_POOL_EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmount, _tokenIndex),
+            userData: abi.encodePacked(EXIT_POOL_EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmount, _tokenIndex),
             toInternalBalance: false
         });
 
@@ -110,6 +133,7 @@ abstract contract BalancerSingleStrategy is BalancerStrategy {
 
     /**
      * @dev Builds the params list required to interact with a Balancer pool.
+     * @param amount Amount of strategy tokens to join or exit
      */
     function _buildBalancerTokensParams(uint256 amount)
         private
@@ -124,6 +148,7 @@ abstract contract BalancerSingleStrategy is BalancerStrategy {
 
     /**
      * @dev Tells the index of the strategy token in the list of tokens associated to the Balancer pool.
+     * @param token Address of the token being queried
      */
     function _getTokenIndex(IERC20 token) private view returns (uint256) {
         uint256 length = _tokens.length;

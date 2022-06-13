@@ -34,15 +34,27 @@ import './balancer/gauges/IBalancerMinter.sol';
 import './balancer/gauges/ILiquidityGauge.sol';
 import './balancer/gauges/IRewardOnlyGauge.sol';
 
+/**
+ * @title BalancerStrategy
+ * @dev This strategy provides liquidity in Balancer pools, obtaining rewards distributed through the Balancer gauges.
+ */
 abstract contract BalancerStrategy is IStrategy, Ownable {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
     using PortfoliosData for bytes;
 
-    uint256 private constant MAX_SLIPPAGE = 10e16; // 10%
-    uint256 private constant SWAP_THRESHOLD = 10; // 10 wei
+    // Max value in order to cap the slippage config: 10%
+    uint256 private constant MAX_SLIPPAGE = 10e16;
+
+    // Min value in order to limit the amount of token rewards to be swapped in the strategy: 10 wei
+    uint256 private constant SWAP_THRESHOLD = 10;
+
+    // Min value in order to limit the amount of token rewards to be swapped in the strategy
     uint256 internal constant VAULT_EXIT_RATIO_PRECISION = 1e18;
 
+    /**
+     * @dev Emitted every time a new slippage value is set
+     */
     event SetSlippage(uint256 slippage);
 
     // Mimic Vault reference
@@ -84,11 +96,26 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
     // Scaling factor of the entry point token
     uint256 internal immutable _tokenScale;
 
+    /**
+     * @dev Used to mark functions that can only be called by the protocol vault
+     */
     modifier onlyVault() {
         require(address(_vault) == msg.sender, 'CALLER_IS_NOT_VAULT');
         _;
     }
 
+    /**
+     * @dev Initializes the Balancer strategy contract
+     * @param vault Protocol vault reference
+     * @param balancerVault Balancer V2 Vault reference
+     * @param balancerMinter Balancer Minter reference
+     * @param token Token to be used as the strategy entry point
+     * @param poolId Id of the Balancer pool to create the strategy for
+     * @param gauge Address of the gauge associated to the pool to be used
+     * @param gaugeType Type of the gauges created by the associated factory: liquidity or rewards only
+     * @param slippage Slippage value to be used in order to swap rewards
+     * @param metadataURI Metadata URI associated to the strategy
+     */
     constructor(
         IVault vault,
         IBalancerVault balancerVault,
@@ -211,20 +238,24 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
 
     /**
      * @dev Setter to override the existing metadata URI
+     * @param metadataURI New metadata to be set
      */
-    function setMetadataURI(string memory newMetadataURI) external onlyOwner {
-        _setMetadataURI(newMetadataURI);
+    function setMetadataURI(string memory metadataURI) external onlyOwner {
+        _setMetadataURI(metadataURI);
     }
 
     /**
      * @dev Setter to update the slippage
+     * @param slippage New slippage to be set
      */
-    function setSlippage(uint256 newSlippage) external onlyOwner {
-        _setSlippage(newSlippage);
+    function setSlippage(uint256 slippage) external onlyOwner {
+        _setSlippage(slippage);
     }
 
     /**
      * @dev Strategy onJoin hook
+     * @param amount Amount of strategy tokens to invest
+     * @param data Extra data to be used as the encoded slippage to join the Balancer pool
      */
     function onJoin(uint256 amount, bytes memory data)
         external
@@ -251,6 +282,9 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
 
     /**
      * @dev Strategy onExit hook
+     * @param ratio Ratio of the invested position to exit
+     * @param emergency Tells if the exit call is an emergency or not, if it is no investments are made, simply exit
+     * @param data Extra data to be used as the encoded slippage to exit the Balancer pool
      */
     function onExit(uint256 ratio, bool emergency, bytes memory data)
         external
@@ -309,6 +343,9 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
      * @dev Invest all the balance of a token in the strategy into the associated Balancer pool.
      * If the requested token is not the same token as the strategy token it will be swapped before joining the pool.
      * This method is marked as public so it can be used externally by anyone in case of an airdrop.
+     * @param token Token to invest all its balance, it cannot be the BPT associated to the strategy
+     * @param suggestedSlippage Slippage to be used in order to swap the given token, the minimum between this value
+     *        and the one configured for the strategy will be used
      */
     function invest(IERC20 token, uint256 suggestedSlippage) public returns (uint256 bptBalance) {
         require(token != _pool, 'BALANCER_INTERNAL_TOKEN');
@@ -334,11 +371,15 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
 
     /**
      * @dev Internal function to join the Balancer pool
+     * @param amount Amount of strategy tokens to invest
+     * @param slippage Slippage to be used to join the Balancer pool
      */
     function _joinBalancer(uint256 amount, uint256 slippage) internal virtual returns (uint256 bptBalance);
 
     /**
      * @dev Internal function to exit the Balancer pool
+     * @param ratio Ratio of the invested position to exit
+     * @param slippage Slippage to be used to exit the Balancer pool
      */
     function _exitBalancer(uint256 ratio, uint256 slippage)
         internal
@@ -347,6 +388,9 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
 
     /**
      * @dev Internal function to swap a pair of tokens using the Vault's swap connector
+     * @param tokenIn Token to be sent
+     * @param tokenOut Token to received
+     * @param amountIn Amount of tokenIn being swapped
      */
     function _swap(IERC20 tokenIn, IERC20 tokenOut, uint256 amountIn) internal {
         if (amountIn == 0) return;
@@ -378,6 +422,10 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
 
     /**
      * @dev Tells the expected min amount for a swap using the price oracle or the pool itself for joins and exits
+     * @param tokenIn Token to be sent
+     * @param tokenOut Token to received
+     * @param amountIn Amount of tokenIn being swapped
+     * @param slippage Slippage to be used to compute the min amount out
      */
     function _getMinAmountOut(IERC20 tokenIn, IERC20 tokenOut, uint256 amountIn, uint256 slippage)
         internal
@@ -399,6 +447,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
     /**
      * @dev Tells the scaling factor to be used for the strategy token.
      * This strategy does not support working with tokens that use more than 18 decimals.
+     * @param token Address of the token to be queried
      */
     function _getTokenScale(IERC20 token) internal view returns (uint256) {
         uint256 decimals = IERC20Metadata(address(token)).decimals();
@@ -409,24 +458,27 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
 
     /**
      * @dev Internal function to set the metadata URI
+     * @param metadataURI New metadata to be set
      */
-    function _setMetadataURI(string memory newMetadataURI) private {
-        _metadataURI = newMetadataURI;
-        emit SetMetadataURI(newMetadataURI);
+    function _setMetadataURI(string memory metadataURI) private {
+        _metadataURI = metadataURI;
+        emit SetMetadataURI(metadataURI);
     }
 
     /**
      * @dev Internal function to set the slippage
+     * @param slippage New slippage to be set
      */
-    function _setSlippage(uint256 newSlippage) private {
-        require(newSlippage <= MAX_SLIPPAGE, 'SLIPPAGE_ABOVE_MAX');
-
-        _slippage = newSlippage;
-        emit SetSlippage(newSlippage);
+    function _setSlippage(uint256 slippage) private {
+        require(slippage <= MAX_SLIPPAGE, 'SLIPPAGE_ABOVE_MAX');
+        _slippage = slippage;
+        emit SetSlippage(slippage);
     }
 
     /**
      * @dev Internal function to cache the Balancer pool tokens. Used only by the constructor.
+     * @param vault Balancer V2 Vault reference
+     * @param poolId Balancer V2's internal identifier for the Balancer pool
      */
     function _setTokens(IBalancerVault vault, bytes32 poolId) private {
         (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);

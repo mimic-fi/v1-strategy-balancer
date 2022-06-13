@@ -16,7 +16,23 @@ pragma solidity ^0.8.0;
 
 import './BalancerSingleStrategy.sol';
 
+/**
+ * @title BalancerStableStrategy
+ * @dev This strategy provides liquidity in Balancer stable pools through joins.
+ */
 contract BalancerStableStrategy is BalancerSingleStrategy {
+    /**
+     * @dev Initializes the Balancer strategy contract
+     * @param vault Protocol vault reference
+     * @param balancerVault Balancer V2 Vault reference
+     * @param balancerMinter Balancer Minter reference
+     * @param token Token to be used as the strategy entry point
+     * @param poolId Id of the Balancer pool to create the strategy for
+     * @param gauge Address of the gauge associated to the pool to be used
+     * @param gaugeType Type of the gauges created by the associated factory: liquidity or rewards only
+     * @param slippage Slippage value to be used in order to swap rewards
+     * @param metadataURI Metadata URI associated to the strategy
+     */
     constructor(
         IVault vault,
         IBalancerVault balancerVault,
@@ -26,7 +42,7 @@ contract BalancerStableStrategy is BalancerSingleStrategy {
         IGauge gauge,
         IGauge.Type gaugeType,
         uint256 slippage,
-        string memory metadata
+        string memory metadataURI
     )
         BalancerSingleStrategy(
             vault,
@@ -37,12 +53,16 @@ contract BalancerStableStrategy is BalancerSingleStrategy {
             gauge,
             gaugeType,
             slippage,
-            metadata
+            metadataURI
         )
     {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    /**
+     * @dev Tells the exchange rate for a BPT expressed in the strategy token. Since here we are working with stable
+     *      pools, it can be simply computed using the pool rate.
+     */
     function getTokenPerBptPrice() public view override returns (uint256) {
         uint256 rate = IBalancerPool(address(_pool)).getRate();
         return rate / _tokenScale;

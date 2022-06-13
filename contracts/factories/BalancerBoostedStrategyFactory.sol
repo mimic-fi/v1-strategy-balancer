@@ -19,7 +19,19 @@ import '../BalancerStrategy.sol';
 import '../BalancerBoostedStrategy.sol';
 import '../balancer/pools/IBalancerLinearPool.sol';
 
+/**
+ * @title BalancerBoostedStrategyFactory
+ * @dev Factory contract to create BalancerBoostedStrategy contracts
+ */
 contract BalancerBoostedStrategyFactory is BalancerStrategyFactory {
+    /**
+     * @dev Initializes the factory contract
+     * @param _vault Protocol vault reference
+     * @param _balancerVault Balancer V2 Vault reference
+     * @param _balancerMinter Balancer Minter reference
+     * @param _gaugeFactory Gauge factory to fetch pool gauges
+     * @param _gaugeType Type of the gauges created by the associated factory: liquidity or rewards only
+     */
     constructor(
         IVault _vault,
         IBalancerVault _balancerVault,
@@ -30,7 +42,15 @@ contract BalancerBoostedStrategyFactory is BalancerStrategyFactory {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function _create(IERC20 token, bytes32 poolId, IGauge gauge, uint256 slippage, string memory data)
+    /**
+     * @dev Internal method to create a new BalancerBoostedStrategy
+     * @param token Token to be used as the strategy entry point
+     * @param poolId Id of the Balancer pool to create the strategy for
+     * @param gauge Address of the gauge associated to the pool to be used
+     * @param slippage Slippage value to be used in order to swap rewards
+     * @param metadata Metadata URI associated to the strategy
+     */
+    function _create(IERC20 token, bytes32 poolId, IGauge gauge, uint256 slippage, string memory metadata)
         internal
         override
         returns (BalancerStrategy)
@@ -47,7 +67,7 @@ contract BalancerBoostedStrategyFactory is BalancerStrategyFactory {
                 gauge,
                 gaugeType,
                 slippage,
-                data
+                metadata
             );
     }
 

@@ -18,9 +18,25 @@ import './BalancerSingleStrategy.sol';
 import './balancer/pools/LogExpMath.sol';
 import './balancer/pools/IWeightedPool.sol';
 
+/**
+ * @title BalancerWeightedStrategy
+ * @dev This strategy provides liquidity in Balancer weighted pools through joins.
+ */
 contract BalancerWeightedStrategy is BalancerSingleStrategy {
     using FixedPoint for uint256;
 
+    /**
+     * @dev Initializes the Balancer strategy contract
+     * @param vault Protocol vault reference
+     * @param balancerVault Balancer V2 Vault reference
+     * @param balancerMinter Balancer Minter reference
+     * @param token Token to be used as the strategy entry point
+     * @param poolId Id of the Balancer pool to create the strategy for
+     * @param gauge Address of the gauge associated to the pool to be used
+     * @param gaugeType Type of the gauges created by the associated factory: liquidity or rewards only
+     * @param slippage Slippage value to be used in order to swap rewards
+     * @param metadataURI Metadata URI associated to the strategy
+     */
     constructor(
         IVault vault,
         IBalancerVault balancerVault,
@@ -30,7 +46,7 @@ contract BalancerWeightedStrategy is BalancerSingleStrategy {
         IGauge gauge,
         IGauge.Type gaugeType,
         uint256 slippage,
-        string memory metadata
+        string memory metadataURI
     )
         BalancerSingleStrategy(
             vault,
@@ -41,12 +57,18 @@ contract BalancerWeightedStrategy is BalancerSingleStrategy {
             gauge,
             gaugeType,
             slippage,
-            metadata
+            metadataURI
         )
     {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    /**
+     * @dev Tells the exchange rate for a BPT expressed in the strategy token.
+     *      It computes the BPT price in the strategy token by calculating the total balance in the strategy token
+     *      of the strategy itself, querying the prices in an external price oracle, and then dividing it by the
+     *      total supply. Note that doing it this way, the BPT price cannot be manipulated.
+     */
     function getTokenPerBptPrice() public view override returns (uint256) {
         IPriceOracle priceOracle = IPriceOracle(_vault.priceOracle());
         IWeightedPool weightedPool = IWeightedPool(address(_pool));

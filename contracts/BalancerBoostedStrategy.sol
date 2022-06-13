@@ -18,16 +18,40 @@ import '@openzeppelin/contracts/utils/math/SafeCast.sol';
 
 import './BalancerStableStrategy.sol';
 
+/**
+ * @title BalancerBoostedStrategy
+ * @dev This strategy provides liquidity in Balancer boosted pools through batch swaps.
+ */
 contract BalancerBoostedStrategy is BalancerStrategy {
     using FixedPoint for uint256;
 
+    // Index of the strategy token to be used in the swaps
     uint256 private constant TOKEN_INDEX = 0;
+
+    // Index of the linear BPT token to be used in the swaps
     uint256 private constant LINEAR_BPT_INDEX = 1;
+
+    // Index of the BPT token to be used in the swaps
     uint256 private constant BPT_INDEX = 2;
 
+    // Balancer V2's internal identifier for the Balancer linear pool
     bytes32 internal immutable _linearPoolId;
+
+    // Address of the Balancer linear pool contract associated to the strategy
     IERC20 internal immutable _linearPool;
 
+    /**
+     * @dev Initializes the Balancer strategy contract
+     * @param vault Protocol vault reference
+     * @param balancerVault Balancer V2 Vault reference
+     * @param balancerMinter Balancer Minter reference
+     * @param token Token to be used as the strategy entry point
+     * @param poolId Id of the Balancer pool to create the strategy for
+     * @param gauge Address of the gauge associated to the pool to be used
+     * @param gaugeType Type of the gauges created by the associated factory: liquidity or rewards only
+     * @param slippage Slippage value to be used in order to swap rewards
+     * @param metadataURI Metadata URI associated to the strategy
+     */
     constructor(
         IVault vault,
         IBalancerVault balancerVault,
@@ -38,8 +62,8 @@ contract BalancerBoostedStrategy is BalancerStrategy {
         IGauge gauge,
         IGauge.Type gaugeType,
         uint256 slippage,
-        string memory metadata
-    ) BalancerStrategy(vault, balancerVault, balancerMinter, token, poolId, gauge, gaugeType, slippage, metadata) {
+        string memory metadataURI
+    ) BalancerStrategy(vault, balancerVault, balancerMinter, token, poolId, gauge, gaugeType, slippage, metadataURI) {
         _linearPoolId = linearPoolId;
         (address linearPoolAddress, ) = balancerVault.getPool(linearPoolId);
         _linearPool = IERC20(linearPoolAddress);
@@ -60,7 +84,8 @@ contract BalancerBoostedStrategy is BalancerStrategy {
     }
 
     /**
-     * @dev Tells the exchange rate for a BPT expressed in the strategy token
+     * @dev Tells the exchange rate for a BPT expressed in the strategy token. Since here we are working with stable
+     *      pools, it can be simply computed using the pool rate.
      */
     function getTokenPerBptPrice() public view override returns (uint256) {
         uint256 rate = IBalancerPool(address(_pool)).getRate();
@@ -68,7 +93,9 @@ contract BalancerBoostedStrategy is BalancerStrategy {
     }
 
     /**
-     * @dev Internal function to join the Balancer pool
+     * @dev Internal function to join the Balancer boosted pool, a batch swap must be used
+     * @param amount Amount of strategy tokens to invest
+     * @param slippage Slippage to be used to join the Balancer pool
      */
     function _joinBalancer(uint256 amount, uint256 slippage) internal override returns (uint256 bptBalance) {
         if (amount == 0) return 0;
@@ -103,7 +130,9 @@ contract BalancerBoostedStrategy is BalancerStrategy {
     }
 
     /**
-     * @dev Internal function to exit the Balancer pool
+     * @dev Internal function to exit the Balancer pool, a batch swap must be used
+     * @param ratio Ratio of the invested position to exit
+     * @param slippage Slippage to be used to exit the Balancer pool
      */
     function _exitBalancer(uint256 ratio, uint256 slippage)
         internal
@@ -141,6 +170,9 @@ contract BalancerBoostedStrategy is BalancerStrategy {
         bptBalance = initialStakedBptBalance.sub(bptAmount);
     }
 
+    /**
+     * @dev Internal method in order to build the funds params to be used in the batch swaps
+     */
     function _buildFundsParam() private view returns (IBalancerVault.FundManagement memory funds) {
         funds = IBalancerVault.FundManagement({
             sender: address(this),
@@ -150,6 +182,9 @@ contract BalancerBoostedStrategy is BalancerStrategy {
         });
     }
 
+    /**
+     * @dev Internal method in order to build the assets list to be used in the batch swaps
+     */
     function _buildAssetsParam() private view returns (address[] memory assets) {
         assets = new address[](3);
         assets[0] = address(_token);
@@ -157,8 +192,17 @@ contract BalancerBoostedStrategy is BalancerStrategy {
         assets[2] = address(_pool);
     }
 
+    /**
+     * @dev Internal method in order to build the batch swaps steps to provide liquidity in the boosted pool
+     * @param amountIn Amount of the assetIn token to be swapped
+     * @param pool1 Address of the first pool to be used in the batch swap
+     * @param pool1 Address of the second pool to be used in the batch swap
+     * @param assetInIndex Index of the assetIn token in the list of assets passed in the batch swap
+     * @param assetConnectIndex Index of the assetConnect token in the list of assets passed in the batch swap
+     * @param assetOutIndex Index of the assetOut token in the list of assets passed in the batch swap
+     */
     function _buildBatchSwapStepsParam(
-        uint256 amount,
+        uint256 amountIn,
         bytes32 pool1,
         bytes32 pool2,
         uint256 assetInIndex,
@@ -171,7 +215,7 @@ contract BalancerBoostedStrategy is BalancerStrategy {
             poolId: pool1,
             assetInIndex: assetInIndex,
             assetOutIndex: assetConnectIndex,
-            amount: amount,
+            amount: amountIn,
             userData: new bytes(0)
         });
 
