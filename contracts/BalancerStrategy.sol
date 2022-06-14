@@ -49,7 +49,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
     // Min value in order to limit the amount of token rewards to be swapped in the strategy: 10 wei
     uint256 private constant SWAP_THRESHOLD = 10;
 
-    // Min value in order to limit the amount of token rewards to be swapped in the strategy
+    // Precision value used by Mimic's Vault to avoid rounding errors
     uint256 internal constant VAULT_EXIT_RATIO_PRECISION = 1e18;
 
     /**
