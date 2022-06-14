@@ -22,7 +22,14 @@ import '../balancer/gauges/IBalancerMinter.sol';
 import '../balancer/gauges/IGaugeFactory.sol';
 import '../BalancerStrategy.sol';
 
+/**
+ * @title BalancerStrategyFactory
+ * @dev Factory contract to create BalancerStrategy contracts
+ */
 abstract contract BalancerStrategyFactory {
+    /**
+     * @dev Emitted every time a new BalancerStrategy is created
+     */
     event StrategyCreated(BalancerStrategy indexed strategy);
 
     IVault public immutable vault;
@@ -31,6 +38,14 @@ abstract contract BalancerStrategyFactory {
     IGaugeFactory public immutable gaugeFactory;
     IGauge.Type public immutable gaugeType;
 
+    /**
+     * @dev Initializes the factory contract
+     * @param _vault Protocol vault reference
+     * @param _balancerVault Balancer V2 Vault reference
+     * @param _balancerMinter Balancer Minter reference
+     * @param _gaugeFactory Gauge factory to fetch pool gauges
+     * @param _gaugeType Type of the gauges created by the associated factory: liquidity or rewards only
+     */
     constructor(
         IVault _vault,
         IBalancerVault _balancerVault,
@@ -45,6 +60,13 @@ abstract contract BalancerStrategyFactory {
         gaugeType = _gaugeType;
     }
 
+    /**
+     * @dev Creates a new BalancerStrategy
+     * @param token Token to be used as the strategy entry point
+     * @param poolId Id of the Balancer pool to create the strategy for
+     * @param slippage Slippage value to be used in order to swap rewards
+     * @param metadata Metadata URI associated to the strategy
+     */
     function create(IERC20 token, bytes32 poolId, uint256 slippage, string memory metadata)
         external
         returns (BalancerStrategy strategy)
@@ -58,6 +80,15 @@ abstract contract BalancerStrategyFactory {
         emit StrategyCreated(strategy);
     }
 
+    /**
+     * @dev Internal method that must be overridden to create a new BalancerStrategy depending on the pool type:
+     *      weighted, stable, or boosted
+     * @param token Token to be used as the strategy entry point
+     * @param poolId Id of the Balancer pool to create the strategy for
+     * @param gauge Address of the gauge associated to the pool to be used
+     * @param slippage Slippage value to be used in order to swap rewards
+     * @param metadata Metadata URI associated to the strategy
+     */
     function _create(IERC20 token, bytes32 poolId, IGauge gauge, uint256 slippage, string memory metadata)
         internal
         virtual
