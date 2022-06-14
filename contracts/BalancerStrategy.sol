@@ -283,7 +283,7 @@ abstract contract BalancerStrategy is IStrategy, Ownable {
     /**
      * @dev Strategy onExit hook
      * @param ratio Ratio of the invested position to exit
-     * @param emergency Tells if the exit call is an emergency or not, if it is no investments are made, simply exit
+     * @param emergency Tells if the exit call is an emergency or not, if it is then no investments are made, simply exit
      * @param data Extra data to be used as the encoded slippage to exit the Balancer pool
      */
     function onExit(uint256 ratio, bool emergency, bytes memory data)

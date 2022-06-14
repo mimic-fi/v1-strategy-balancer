@@ -25,13 +25,13 @@ import './BalancerStableStrategy.sol';
 contract BalancerBoostedStrategy is BalancerStrategy {
     using FixedPoint for uint256;
 
-    // Index of the strategy token to be used in the swaps
+    // Index of the strategy token to be used in swaps
     uint256 private constant TOKEN_INDEX = 0;
 
-    // Index of the linear BPT token to be used in the swaps
+    // Index of the linear BPT token to be used in swaps
     uint256 private constant LINEAR_BPT_INDEX = 1;
 
-    // Index of the BPT token to be used in the swaps
+    // Index of the BPT token to be used in swaps
     uint256 private constant BPT_INDEX = 2;
 
     // Balancer V2's internal identifier for the Balancer linear pool
@@ -171,7 +171,7 @@ contract BalancerBoostedStrategy is BalancerStrategy {
     }
 
     /**
-     * @dev Internal method in order to build the funds params to be used in the batch swaps
+     * @dev Internal method in order to build the funds params to be used in batch swaps
      */
     function _buildFundsParam() private view returns (IBalancerVault.FundManagement memory funds) {
         funds = IBalancerVault.FundManagement({
@@ -183,7 +183,7 @@ contract BalancerBoostedStrategy is BalancerStrategy {
     }
 
     /**
-     * @dev Internal method in order to build the assets list to be used in the batch swaps
+     * @dev Internal method in order to build the assets list to be used in batch swaps
      */
     function _buildAssetsParam() private view returns (address[] memory assets) {
         assets = new address[](3);
