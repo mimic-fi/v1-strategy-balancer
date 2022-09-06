@@ -1,3 +1,10 @@
+<blockquote style="background: rgba(66,151,197,0.34); border: #ffffff6b; text: #f5fffa">
+  <h5 style="color: rgba(4,37,108,0.82)">☝🏼️ Upgrade</h5>
+  <p>A new version of this part of the protocol can be found here <a href="https://github.com/mimic-fi/v2-core/tree/master/packages/strategies">new one</a>.</p>
+</blockquote>
+
+---
+
 <h1 align="center">
   <a href="https://mimic.fi"><img src="https://www.mimic.fi/logo.png" alt="Mimic Finance" width="200"></a> 
 </h1>
